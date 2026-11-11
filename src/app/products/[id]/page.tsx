@@ -17,8 +17,8 @@ export default async function ProductDetailPage({ params }: PageProps) {
   }
 
   return (
-    <PageLayout>
-      <main className="flex-1 container mx-auto px-4 sm:px-6 py-10">
+    <PageLayout className="bg-[#F8FAFC]">
+      <main className="flex-1 container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <ProductDetailClient product={product} />
       </main>
     </PageLayout>

@@ -16,10 +16,10 @@ export default function ProductCard({ product }: ProductCardProps) {
   const { addToCart, isInCart } = useCart();
   const isClient = useIsClient();
   const isAdded = isClient && isInCart(product.id);
+  const detailsHref = `/products/${product.id}`;
 
   const discountPercent = calculateDiscount(product.price, product.originalPrice);
 
-  // Determine badge type: if explicitly set use it, otherwise alternate based on id hash
   const isLightning =
     product.discountType === "lightning" ||
     (!product.discountType &&
@@ -27,12 +27,16 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   return (
     <div className="group relative flex flex-col justify-between rounded-2xl border border-[#E2E8F0] bg-white p-3.5 sm:p-4 shadow-2xs hover:shadow-lg transition-all duration-300">
-      {/* Top Discount Badges (2 Types as in design) */}
+      <Link
+        href={detailsHref}
+        className="absolute inset-0 z-10 rounded-2xl"
+        aria-label={`View ${product.name}`}
+      />
+
       {discountPercent > 0 && (
         <>
           {isLightning ? (
-            /* Type 2: Red Lightning Ribbon Tag (at top center) */
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
               <div
                 className="bg-[#E53E3E] text-white px-3 py-1 text-xs font-black tracking-wide flex items-center gap-1 shadow-xs"
                 style={{
@@ -46,9 +50,8 @@ export default function ProductCard({ product }: ProductCardProps) {
               </div>
             </div>
           ) : (
-            /* Type 1: Blue Ribbon Bookmark Tag with sawtooth notch (at top left) */
             <div
-              className="absolute top-0 left-3 z-20 w-9 bg-[#1865F2] text-white pt-1.5 pb-2.5 px-1 text-center shadow-xs"
+              className="absolute top-0 left-3 z-20 w-9 bg-[#1865F2] text-white pt-1.5 pb-2.5 px-1 text-center shadow-xs pointer-events-none"
               style={{
                 clipPath:
                   "polygon(0 0, 100% 0, 100% 86%, 87.5% 100%, 75% 86%, 62.5% 100%, 50% 86%, 37.5% 100%, 25% 86%, 12.5% 100%, 0 86%)",
@@ -65,22 +68,16 @@ export default function ProductCard({ product }: ProductCardProps) {
         </>
       )}
 
-      {/* Product Image Section */}
-      <Link
-        href={`/products/${product.id}`}
-        className="relative aspect-square w-full bg-white flex items-center justify-center p-2 overflow-hidden mb-3"
-      >
+      <div className="relative aspect-square w-full bg-white flex items-center justify-center p-2 overflow-hidden mb-3 pointer-events-none">
         <img
           src={product.images[0]}
           alt={product.name}
           className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-300"
         />
-      </Link>
+      </div>
 
-      {/* Info Content */}
-      <div className="flex-1 flex flex-col justify-between space-y-2.5">
+      <div className="relative flex-1 flex flex-col justify-between space-y-2.5 pointer-events-none">
         <div className="space-y-2">
-          {/* Delivery Badge (Rocket 12-24 Hours) */}
           <div>
             <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#ECEFF3] text-[#1E293B] text-[11px] font-bold tracking-wide">
               <div className="w-4 h-4 rounded-full bg-[#1E293B] flex items-center justify-center text-amber-400 flex-shrink-0">
@@ -90,14 +87,10 @@ export default function ProductCard({ product }: ProductCardProps) {
             </div>
           </div>
 
-          {/* Product Title */}
-          <Link href={`/products/${product.id}`} className="block">
-            <h3 className="font-bold text-[#1E293B] text-sm sm:text-[15px] leading-snug line-clamp-2 hover:text-[#082F6B] transition-colors">
-              {product.name}
-            </h3>
-          </Link>
+          <h3 className="font-bold text-[#1E293B] text-sm sm:text-[15px] leading-snug line-clamp-2 group-hover:text-[#082F6B] transition-colors">
+            {product.name}
+          </h3>
 
-          {/* Rating Stars & Count */}
           <div className="flex items-center gap-1.5">
             <div className="flex items-center gap-0.5">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -117,7 +110,6 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
         </div>
 
-        {/* Price & ADD Action Button */}
         <div className="flex items-end justify-between pt-2">
           <div>
             {product.originalPrice && product.originalPrice > product.price && (
@@ -131,9 +123,14 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
 
           <button
-            onClick={() => addToCart(product, 1)}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              addToCart(product, 1);
+            }}
             aria-label={isAdded ? `${product.name} added — add one more` : `Add ${product.name} to cart`}
-            className={`inline-flex items-center gap-1 px-3.5 py-1.5 rounded-lg border-2 border-[#082F6B] font-bold text-xs sm:text-sm tracking-wider uppercase transition active:scale-95 cursor-pointer shadow-2xs ${
+            className={`relative z-20 pointer-events-auto inline-flex items-center gap-1 px-3.5 py-1.5 rounded-lg border-2 border-[#082F6B] font-bold text-xs sm:text-sm tracking-wider uppercase transition active:scale-95 cursor-pointer shadow-2xs ${
               isAdded
                 ? "bg-[#082F6B] text-white hover:bg-[#062452]"
                 : "text-[#082F6B] hover:bg-[#082F6B]/10"
