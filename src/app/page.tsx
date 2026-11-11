@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import PageLayout from "@/components/layout/PageLayout";
 import HeroBanner from "@/components/modules/home/HeroBanner";
+import CategoryExpandSlider from "@/components/modules/home/CategoryExpandSlider";
 import FeaturedSection from "@/components/modules/home/FeaturedSection";
 import ProductFilters from "@/components/modules/product/ProductFilters";
 import ProductGrid from "@/components/modules/product/ProductGrid";
@@ -42,6 +43,8 @@ export default function HomePage() {
 
       <main className="flex-1">
         <HeroBanner onExploreClick={handleExploreClick} />
+
+        <CategoryExpandSlider />
 
         {/* Featured Section */}
         {products.length > 0 && <FeaturedSection products={products} />}
