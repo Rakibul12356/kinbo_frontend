@@ -70,10 +70,10 @@ export default function SupportChatWidget() {
   if (isCartOpen) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3 select-none">
+    <div className="fixed bottom-5 right-4 z-30 flex max-w-[calc(100vw-2rem)] flex-col items-end gap-3 select-none sm:bottom-6 sm:right-6">
       {/* Support Chat Popup Card */}
       {isOpen && (
-        <div className="w-[330px] sm:w-[360px] bg-white rounded-2xl shadow-2xl border border-zinc-200/90 overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-bottom-5">
+        <div className="w-[min(330px,calc(100vw-2rem))] sm:w-[360px] bg-white rounded-2xl shadow-2xl border border-zinc-200/90 overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-bottom-5">
           {activeTab === "menu" ? (
             <div className="p-5">
               {/* Header */}

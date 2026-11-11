@@ -24,20 +24,31 @@ const ITEMS = CATEGORIES.map((category) => ({
   href: categoryListingHref(category.slug),
 }));
 
-const PAGE_SIZE = 5;
-
 export default function CategoryExpandSlider() {
   const [active, setActive] = useState<number | null>(null);
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(3);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const pageCount = Math.max(1, Math.ceil(ITEMS.length / PAGE_SIZE));
-  const start = page * PAGE_SIZE;
-  const visible = ITEMS.slice(start, start + PAGE_SIZE);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 640px)");
+    const sync = () => setPageSize(mq.matches ? 5 : 3);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  const pageCount = Math.max(1, Math.ceil(ITEMS.length / pageSize));
+  const start = page * pageSize;
+  const visible = ITEMS.slice(start, start + pageSize);
 
   useEffect(() => {
     setActive(null);
   }, [page]);
+
+  useEffect(() => {
+    setPage((p) => Math.min(p, Math.max(0, pageCount - 1)));
+  }, [pageCount]);
 
   useEffect(() => {
     return () => {
@@ -59,10 +70,10 @@ export default function CategoryExpandSlider() {
   };
 
   return (
-    <section className="bg-white border-b border-[#E5E7EB] py-10 sm:py-12">
-      <div className="container mx-auto px-4 sm:px-6">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#1F2937]">
+    <section className="overflow-hidden bg-white border-b border-[#E5E7EB] py-8 sm:py-12">
+      <div className="container mx-auto max-w-full px-4 sm:px-6">
+        <div className="mb-5 flex items-center justify-between gap-3 sm:mb-6 sm:gap-4">
+          <h2 className="text-xl sm:text-3xl font-extrabold tracking-tight text-[#1F2937]">
             Shop By Category
           </h2>
 
@@ -87,7 +98,7 @@ export default function CategoryExpandSlider() {
         </div>
 
         <div
-          className="flex h-72 sm:h-80 lg:h-[22rem] gap-3 sm:gap-4"
+          className="flex h-44 sm:h-64 lg:h-80 gap-2 sm:gap-3 lg:gap-4 overflow-hidden"
           onMouseLeave={onLeave}
         >
           {visible.map((item, i) => {
@@ -101,14 +112,14 @@ export default function CategoryExpandSlider() {
                 onMouseEnter={() => onEnter(index)}
                 onFocus={() => onEnter(index)}
                 aria-label={item.label}
-                className={`group relative flex h-full flex-1 items-center justify-center overflow-hidden rounded-2xl px-4 transition-all duration-500 ease-out ${
+                className={`group relative flex h-full min-w-0 flex-1 items-center justify-center overflow-hidden rounded-2xl px-2 sm:px-4 transition-all duration-500 ease-out ${
                   expanded
                     ? "flex-[3.4] bg-[#FF6B00] text-white shadow-lg shadow-[#FF6B00]/20"
                     : "bg-[#082F6B] text-white hover:bg-[#0a3a82]"
                 }`}
               >
                 <span
-                  className={`whitespace-nowrap text-base sm:text-lg font-semibold tracking-wide transition-all duration-500 ${
+                  className={`max-w-full truncate whitespace-nowrap text-xs sm:text-base lg:text-lg font-semibold tracking-wide transition-all duration-500 ${
                     expanded
                       ? "rotate-0"
                       : "[writing-mode:vertical-rl] rotate-180"

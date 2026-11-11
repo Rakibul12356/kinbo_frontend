@@ -76,6 +76,16 @@ export default function CheckoutPage() {
     }
   };
 
+  if (!ready) {
+    return (
+      <PageLayout>
+        <main className="flex-1 container mx-auto px-4 sm:px-6 py-16 text-center">
+          <p className="text-sm text-zinc-500">Loading checkout…</p>
+        </main>
+      </PageLayout>
+    );
+  }
+
   if (cart.length === 0) {
     return (
       <PageLayout>
