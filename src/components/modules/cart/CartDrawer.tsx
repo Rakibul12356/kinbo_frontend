@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useCart } from "@/hooks/use-cart";
-import { X, ShoppingCart, ArrowRight } from "lucide-react";
+import { X, ShoppingCart, ArrowRight, Tag } from "lucide-react";
 import Link from "next/link";
 import CartItemRow from "./CartItemRow";
 import { formatPrice } from "@/lib/utils";
@@ -15,10 +15,17 @@ export default function CartDrawer() {
     removeFromCart,
     updateQuantity,
     subtotal,
-    clearCart,
+    discount,
+    shipping,
+    total,
+    appliedCoupon,
+    applyCoupon,
+    removeCoupon,
   } = useCart();
 
-  // Prevent background page scrolling when cart drawer is open
+  const [couponInput, setCouponInput] = useState("");
+  const [couponError, setCouponError] = useState<string | null>(null);
+
   useEffect(() => {
     if (isCartOpen) {
       const originalOverflow = document.body.style.overflow;
@@ -29,14 +36,26 @@ export default function CartDrawer() {
     }
   }, [isCartOpen]);
 
+  useEffect(() => {
+    if (appliedCoupon) {
+      setCouponInput(appliedCoupon.code);
+      setCouponError(null);
+    }
+  }, [appliedCoupon]);
+
   if (!isCartOpen) return null;
 
-  const shipping = subtotal > 50 || subtotal === 0 ? 0 : 5.0;
-  const total = subtotal + shipping;
+  const handleApplyCoupon = () => {
+    const result = applyCoupon(couponInput);
+    if (!result.ok) {
+      setCouponError(result.error);
+      return;
+    }
+    setCouponError(null);
+  };
 
   return (
     <div className="fixed inset-0 z-[100] overflow-hidden">
-      {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
         onClick={() => setIsCartOpen(false)}
@@ -44,7 +63,6 @@ export default function CartDrawer() {
 
       <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
         <div className="w-screen max-w-md bg-white shadow-2xl flex flex-col">
-          {/* Drawer Header */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-[#E5E7EB]">
             <div className="flex items-center gap-2">
               <ShoppingCart className="w-5 h-5 text-[#082F6B]" />
@@ -61,7 +79,6 @@ export default function CartDrawer() {
             </button>
           </div>
 
-          {/* Cart Items List */}
           <div className="flex-1 overflow-y-auto p-6 space-y-3">
             {cart.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center py-12">
@@ -93,9 +110,60 @@ export default function CartDrawer() {
             )}
           </div>
 
-          {/* Drawer Footer */}
           {cart.length > 0 && (
-            <div className="p-6 border-t border-[#E5E7EB] bg-[#F3F7FC]/50 space-y-4">
+            <div className="p-5 border-t border-[#E5E7EB] bg-[#F3F7FC]/50 space-y-3">
+              {/* Coupon */}
+              <div className="rounded-xl border border-[#E5E7EB] bg-white p-3 space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-[#1F2937]">
+                  <Tag className="w-3.5 h-3.5 text-[#FF6B00]" />
+                  <span>Have a coupon?</span>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={couponInput}
+                    onChange={(e) => {
+                      setCouponInput(e.target.value.toUpperCase());
+                      setCouponError(null);
+                    }}
+                    placeholder="Enter code"
+                    className="min-w-0 flex-1 rounded-lg border border-[#E5E7EB] bg-[#F8FAFC] px-3 py-2 text-xs font-semibold text-[#1F2937] uppercase tracking-wide outline-none focus:border-[#082F6B]"
+                  />
+                  {appliedCoupon ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        removeCoupon();
+                        setCouponInput("");
+                        setCouponError(null);
+                      }}
+                      className="shrink-0 rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleApplyCoupon}
+                      className="shrink-0 rounded-lg bg-[#082F6B] px-3 py-2 text-xs font-bold text-white hover:bg-[#062452] cursor-pointer"
+                    >
+                      Apply
+                    </button>
+                  )}
+                </div>
+                {couponError && (
+                  <p className="text-[11px] font-medium text-rose-600">{couponError}</p>
+                )}
+                {appliedCoupon && (
+                  <p className="text-[11px] font-medium text-emerald-700">
+                    {appliedCoupon.code} applied — {appliedCoupon.label}
+                  </p>
+                )}
+                <p className="text-[10px] text-zinc-400">
+                  Try KINBO10, SAVE100 or WELCOME15
+                </p>
+              </div>
+
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-zinc-600">
                   <span>Subtotal</span>
@@ -103,6 +171,12 @@ export default function CartDrawer() {
                     {formatPrice(subtotal)}
                   </span>
                 </div>
+                {discount > 0 && (
+                  <div className="flex justify-between text-emerald-700">
+                    <span>Coupon discount</span>
+                    <span className="font-semibold">-{formatPrice(discount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-zinc-600">
                   <span>Shipping</span>
                   <span>{shipping === 0 ? "Free" : formatPrice(shipping)}</span>
@@ -113,32 +187,14 @@ export default function CartDrawer() {
                 </div>
               </div>
 
-              <div className="space-y-2 pt-2">
-                <Link
-                  href="/checkout"
-                  onClick={() => setIsCartOpen(false)}
-                  className="w-full py-3.5 px-4 rounded-xl bg-[#FF6B00] hover:bg-[#E85D00] text-white font-semibold text-sm shadow-md flex items-center justify-center gap-2 transition"
-                >
-                  <span>Proceed to Checkout</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-
-                <div className="flex items-center justify-between pt-1">
-                  <Link
-                    href="/cart"
-                    onClick={() => setIsCartOpen(false)}
-                    className="text-xs text-[#082F6B] font-semibold hover:underline"
-                  >
-                    View Full Cart
-                  </Link>
-                  <button
-                    onClick={clearCart}
-                    className="text-xs text-rose-500 hover:text-rose-700 transition cursor-pointer"
-                  >
-                    Clear Cart
-                  </button>
-                </div>
-              </div>
+              <Link
+                href="/checkout"
+                onClick={() => setIsCartOpen(false)}
+                className="w-full py-3.5 px-4 rounded-xl bg-[#FF6B00] hover:bg-[#E85D00] text-white font-semibold text-sm shadow-md flex items-center justify-center gap-2 transition"
+              >
+                <span>Proceed to Checkout</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
             </div>
           )}
         </div>

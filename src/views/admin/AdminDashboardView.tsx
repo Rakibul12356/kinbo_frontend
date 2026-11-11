@@ -6,12 +6,14 @@ import { ArrowRight, Package, ShoppingBag, Sparkles } from "lucide-react";
 import StatCard from "@/components/dashboard/StatCard";
 import RouteGuard from "@/components/auth/RouteGuard";
 import { useAddedProducts } from "@/hooks/use-catalog";
+import { useOrders } from "@/hooks/use-orders";
 import { PRODUCTS_DATA } from "@/data/products";
 import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
 import AdminShell from "./AdminShell";
 
 function DashboardContent() {
   const addedProducts = useAddedProducts();
+  const { orders, unreadCount } = useOrders();
   const totalProducts = PRODUCTS_DATA.length + addedProducts.length;
   const featuredCount = [...addedProducts, ...PRODUCTS_DATA].filter((p) => p.isFeatured).length;
 
@@ -32,24 +34,42 @@ function DashboardContent() {
         />
         <StatCard
           label="Orders"
-          value="—"
+          value={orders.length}
           icon={ShoppingBag}
-          hint="Coming soon"
-          accent="bg-zinc-100 text-zinc-500"
+          hint={unreadCount > 0 ? `${unreadCount} new notification${unreadCount === 1 ? "" : "s"}` : "From customer checkout"}
+          accent="bg-[#FF6B00]/10 text-[#FF6B00]"
         />
       </div>
 
-      <section className="mt-6 flex flex-col gap-3 rounded-2xl border border-[#E5E7EB] bg-[#082F6B] px-5 py-4 text-white sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-base font-bold">Add a product</h2>
-          <p className="mt-1 text-sm text-white/75">Publish from the sidebar and it appears on the storefront.</p>
+      <section className="mt-6 grid gap-3 sm:grid-cols-2">
+        <div className="flex flex-col gap-3 rounded-2xl border border-[#E5E7EB] bg-[#082F6B] px-5 py-4 text-white sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-bold">Add a product</h2>
+            <p className="mt-1 text-sm text-white/75">Publish from the sidebar and it appears on the storefront.</p>
+          </div>
+          <Link
+            href={ADMIN_ROUTES.products}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#082F6B] hover:bg-[#F3F7FC]"
+          >
+            Open products <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
-        <Link
-          href={ADMIN_ROUTES.products}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#082F6B] hover:bg-[#F3F7FC]"
-        >
-          Open products <ArrowRight className="h-4 w-4" />
-        </Link>
+        <div className="flex flex-col gap-3 rounded-2xl border border-[#E5E7EB] bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-bold text-[#1F2937]">Manage orders</h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              {unreadCount > 0
+                ? `${unreadCount} unread order notification${unreadCount === 1 ? "" : "s"}.`
+                : "View customer confirmations and update status."}
+            </p>
+          </div>
+          <Link
+            href={ADMIN_ROUTES.orders}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#082F6B] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#062452]"
+          >
+            Open orders <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
       </section>
 
       <section className="mt-6 rounded-2xl border border-[#E5E7EB] bg-white shadow-xs">

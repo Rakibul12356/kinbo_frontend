@@ -17,7 +17,7 @@ export function adminNav(): NavGroup[] {
       title: "Marketplace",
       items: [
         { label: "Products", href: "/admin/products", icon: Package },
-        { label: "Orders", href: "/admin/orders", icon: ShoppingBag, soon: true },
+        { label: "Orders", href: "/admin/orders", icon: ShoppingBag },
         { label: "Customers", href: "/admin/customers", icon: Users, soon: true },
         { label: "Reports", href: "/admin/reports", icon: BarChart3, soon: true },
       ],

@@ -20,6 +20,7 @@ export const ADMIN_ROUTES = {
   login: "/login?role=admin",
   dashboard: "/admin/dashboard",
   products: "/admin/products",
+  orders: "/admin/orders",
 } as const;
 
 export type ActionResult<T = object> =

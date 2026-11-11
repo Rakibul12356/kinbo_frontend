@@ -6,32 +6,74 @@ import Link from "next/link";
 import PageLayout from "@/components/layout/PageLayout";
 import { useCart } from "@/hooks/use-cart";
 import { formatPrice } from "@/lib/utils";
-import {
-  CreditCard,
-  Truck,
-  ShieldCheck,
-  ArrowLeft,
-} from "lucide-react";
+import { placeOrder } from "@/lib/orders/order-store";
+import { Truck, ShieldCheck, ArrowLeft } from "lucide-react";
 import Input from "@/components/ui/input";
 import Button from "@/components/ui/button";
+import { toast } from "react-toastify";
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, subtotal, clearCart } = useCart();
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "cod" | "bkash">("card");
+  const {
+    cart,
+    subtotal,
+    discount,
+    shipping,
+    total,
+    appliedCoupon,
+    clearCart,
+    ready,
+  } = useCart();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    fullName: "",
+    phone: "",
+    email: "",
+    address: "",
+    city: "",
+    postalCode: "",
+  });
 
-  const shipping = subtotal > 50 || subtotal === 0 ? 0 : 5.0;
-  const tax = subtotal * 0.05;
-  const total = subtotal + shipping + tax;
+  const updateField = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, [key]: e.target.value }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (cart.length === 0) return;
     setIsSubmitting(true);
-    setTimeout(() => {
+
+    try {
+      const order = placeOrder({
+        shipping: {
+          fullName: form.fullName.trim(),
+          phone: form.phone.trim(),
+          email: form.email.trim(),
+          address: form.address.trim(),
+          city: form.city.trim(),
+          postalCode: form.postalCode.trim(),
+        },
+        items: cart.map((item) => ({
+          productId: item.product.id,
+          name: item.product.name,
+          image: item.product.images[0] ?? "",
+          price: item.product.price,
+          quantity: item.quantity,
+        })),
+        subtotal,
+        discount,
+        shippingFee: shipping,
+        total,
+        couponCode: appliedCoupon?.code ?? null,
+      });
+
       clearCart();
-      router.push("/checkout/success");
-    }, 1200);
+      toast.success(`Order ${order.id} confirmed`);
+      router.push(`/checkout/success?orderId=${encodeURIComponent(order.id)}`);
+    } catch {
+      toast.error("Could not place order. Please try again.");
+      setIsSubmitting(false);
+    }
   };
 
   if (cart.length === 0) {
@@ -58,7 +100,6 @@ export default function CheckoutPage() {
 
   return (
     <PageLayout>
-
       <main className="flex-1 container mx-auto px-4 sm:px-6 py-10">
         <div className="flex items-center gap-2 text-xs text-zinc-500 mb-6">
           <Link href="/cart" className="hover:text-[#082F6B] flex items-center gap-1">
@@ -69,98 +110,82 @@ export default function CheckoutPage() {
           <span className="font-semibold text-[#1F2937]">Checkout</span>
         </div>
 
-        <h1 className="text-3xl font-extrabold text-[#1F2937] mb-8">
-          Secure Checkout
-        </h1>
+        <h1 className="text-3xl font-extrabold text-[#1F2937] mb-8">Confirm Order</h1>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Form Details */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Shipping Info */}
+          <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 shadow-xs space-y-4">
               <div className="flex items-center gap-2 text-base font-bold text-[#1F2937] border-b border-[#E5E7EB] pb-3">
                 <Truck className="w-5 h-5 text-[#082F6B]" />
-                <span>1. Shipping Information</span>
+                <span>Shipping Information</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input label="Full Name" placeholder="e.g. John Doe" required />
-                <Input label="Phone Number" placeholder="+880 1XXXXXXXXX" required />
+                <Input
+                  label="Full Name"
+                  placeholder="e.g. John Doe"
+                  required
+                  value={form.fullName}
+                  onChange={updateField("fullName")}
+                />
+                <Input
+                  label="Phone Number"
+                  placeholder="+880 1XXXXXXXXX"
+                  required
+                  value={form.phone}
+                  onChange={updateField("phone")}
+                />
                 <div className="sm:col-span-2">
-                  <Input label="Email Address" type="email" placeholder="john@example.com" required />
+                  <Input
+                    label="Email Address"
+                    type="email"
+                    placeholder="john@example.com"
+                    required
+                    value={form.email}
+                    onChange={updateField("email")}
+                  />
                 </div>
                 <div className="sm:col-span-2">
-                  <Input label="Street Address" placeholder="Apartment, suite, street" required />
+                  <Input
+                    label="Street Address"
+                    placeholder="Apartment, suite, street"
+                    required
+                    value={form.address}
+                    onChange={updateField("address")}
+                  />
                 </div>
-                <Input label="City" placeholder="Dhaka" required />
-                <Input label="Postal Code" placeholder="1212" required />
-              </div>
-            </div>
-
-            {/* Payment Method */}
-            <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 shadow-xs space-y-4">
-              <div className="flex items-center gap-2 text-base font-bold text-[#1F2937] border-b border-[#E5E7EB] pb-3">
-                <CreditCard className="w-5 h-5 text-[#FF6B00]" />
-                <span>2. Payment Method</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <label
-                  onClick={() => setPaymentMethod("card")}
-                  className={`p-4 rounded-xl border flex flex-col gap-2 cursor-pointer transition ${
-                    paymentMethod === "card"
-                      ? "border-[#082F6B] bg-[#082F6B]/5 text-[#082F6B]"
-                      : "border-[#E5E7EB] text-zinc-600 hover:bg-zinc-50"
-                  }`}
-                >
-                  <CreditCard className="w-5 h-5" />
-                  <span className="text-xs font-bold">Credit/Debit Card</span>
-                </label>
-
-                <label
-                  onClick={() => setPaymentMethod("bkash")}
-                  className={`p-4 rounded-xl border flex flex-col gap-2 cursor-pointer transition ${
-                    paymentMethod === "bkash"
-                      ? "border-[#E2136E] bg-pink-50 text-[#E2136E]"
-                      : "border-[#E5E7EB] text-zinc-600 hover:bg-zinc-50"
-                  }`}
-                >
-                  <span className="text-base font-black">bKash / Nagad</span>
-                  <span className="text-xs font-bold">Mobile Banking</span>
-                </label>
-
-                <label
-                  onClick={() => setPaymentMethod("cod")}
-                  className={`p-4 rounded-xl border flex flex-col gap-2 cursor-pointer transition ${
-                    paymentMethod === "cod"
-                      ? "border-[#0bb07b] bg-emerald-50 text-emerald-700"
-                      : "border-[#E5E7EB] text-zinc-600 hover:bg-zinc-50"
-                  }`}
-                >
-                  <Truck className="w-5 h-5" />
-                  <span className="text-xs font-bold">Cash on Delivery</span>
-                </label>
+                <Input
+                  label="City"
+                  placeholder="Dhaka"
+                  required
+                  value={form.city}
+                  onChange={updateField("city")}
+                />
+                <Input
+                  label="Postal Code"
+                  placeholder="1212"
+                  required
+                  value={form.postalCode}
+                  onChange={updateField("postalCode")}
+                />
               </div>
 
-              {paymentMethod === "card" && (
-                <div className="pt-3 space-y-3">
-                  <Input label="Card Number" placeholder="4111 2222 3333 4444" required />
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input label="Expiration (MM/YY)" placeholder="12/28" required />
-                    <Input label="CVC" placeholder="123" required />
-                  </div>
-                </div>
-              )}
+              <p className="text-xs text-zinc-500 pt-1">
+                No online payment here — confirm with your details and we&apos;ll process the order.
+                Admin gets a notification instantly.
+              </p>
             </div>
           </div>
 
-          {/* Checkout Summary */}
           <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 shadow-xs h-fit space-y-4">
             <h2 className="text-lg font-bold text-[#1F2937]">Order Summary</h2>
 
             <div className="divide-y divide-[#E5E7EB] max-h-60 overflow-y-auto pr-1">
               {cart.map((item) => (
-                <div key={item.product.id} className="py-2.5 flex justify-between items-center text-xs">
+                <div
+                  key={item.product.id}
+                  className="py-2.5 flex justify-between items-center text-xs"
+                >
                   <div className="flex items-center gap-2">
                     <img
                       src={item.product.images[0]}
@@ -168,7 +193,9 @@ export default function CheckoutPage() {
                       className="w-10 h-10 object-cover rounded-lg bg-zinc-100"
                     />
                     <div>
-                      <p className="font-semibold text-[#1F2937] line-clamp-1">{item.product.name}</p>
+                      <p className="font-semibold text-[#1F2937] line-clamp-1">
+                        {item.product.name}
+                      </p>
                       <p className="text-zinc-400">Qty: {item.quantity}</p>
                     </div>
                   </div>
@@ -184,13 +211,15 @@ export default function CheckoutPage() {
                 <span>Subtotal</span>
                 <span className="font-semibold text-[#1F2937]">{formatPrice(subtotal)}</span>
               </div>
+              {discount > 0 && (
+                <div className="flex justify-between text-emerald-700">
+                  <span>Coupon{appliedCoupon ? ` (${appliedCoupon.code})` : ""}</span>
+                  <span className="font-semibold">-{formatPrice(discount)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span>Shipping</span>
                 <span>{shipping === 0 ? "Free" : formatPrice(shipping)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Tax (5%)</span>
-                <span>{formatPrice(tax)}</span>
               </div>
               <div className="flex justify-between text-base font-extrabold text-[#1F2937] pt-2 border-t border-[#E5E7EB]">
                 <span>Total Due</span>
@@ -205,12 +234,12 @@ export default function CheckoutPage() {
               isLoading={isSubmitting}
               className="w-full mt-4 font-bold"
             >
-              Complete Order ({formatPrice(total)})
+              Confirm Order ({formatPrice(total)})
             </Button>
 
             <div className="flex items-center gap-2 text-xs text-zinc-400 justify-center pt-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>Encrypted & Guaranteed Delivery</span>
+              <span>Order goes to admin dashboard after confirm</span>
             </div>
           </div>
         </form>
