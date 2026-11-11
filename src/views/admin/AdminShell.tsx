@@ -18,13 +18,12 @@ export default function AdminShell({
   actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const { admin, vendors } = useAuth();
-  const pending = vendors.filter((v) => v.store && v.status === "pending").length;
+  const { admin } = useAuth();
 
   return (
     <DashboardShell
       brandLabel="Admin"
-      navGroups={adminNav(pending)}
+      navGroups={adminNav()}
       title={title}
       description={description}
       actions={actions}

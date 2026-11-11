@@ -4,43 +4,17 @@ import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  ADMIN_ROUTES,
-  VENDOR_ROUTES,
-  vendorHomeRoute,
-} from "@/lib/auth/auth-store";
+import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
 
-export type GuardStep =
-  | "vendor-guest"
-  | "verify"
-  | "onboarding"
-  | "status"
-  | "dashboard"
-  | "admin-guest"
-  | "admin";
+export type GuardStep = "admin-guest" | "admin";
 
 type AuthView = ReturnType<typeof useAuth>;
 
 /** Returns where the user should be sent instead, or null if they may see this step. */
 function resolveRedirect(step: GuardStep, auth: AuthView): string | null {
-  const { vendor, verifyingVendor, admin } = auth;
+  const { admin } = auth;
 
   switch (step) {
-    case "vendor-guest":
-      return vendor ? vendorHomeRoute(vendor) : null;
-    case "verify":
-      if (verifyingVendor) return null;
-      return vendor ? vendorHomeRoute(vendor) : VENDOR_ROUTES.login;
-    case "onboarding":
-      if (!vendor) return VENDOR_ROUTES.login;
-      if (vendor.emailVerified && (!vendor.store || vendor.status === "rejected")) return null;
-      return vendorHomeRoute(vendor);
-    case "status":
-      if (!vendor) return VENDOR_ROUTES.login;
-      return vendor.store ? null : vendorHomeRoute(vendor);
-    case "dashboard":
-      if (!vendor) return VENDOR_ROUTES.login;
-      return vendor.status === "approved" ? null : vendorHomeRoute(vendor);
     case "admin-guest":
       return admin ? ADMIN_ROUTES.dashboard : null;
     case "admin":

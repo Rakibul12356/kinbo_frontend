@@ -26,7 +26,7 @@ const usefulLinks = [
   { label: "FAQ", href: "/faq" },
   { label: "Account", href: "/account" },
   { label: "Track My Order", href: "/orders" },
-  { label: "Sell on Kinbo", href: "/vendor/signup" },
+  { label: "Contact Us", href: "/contact" },
 ];
 
 const paymentMethods = [

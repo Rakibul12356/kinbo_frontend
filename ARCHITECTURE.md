@@ -396,42 +396,20 @@ Backend ekhono ready na, tai API fail hole demo data dey — UI sob shomoy kaj k
 
 ---
 
-## 10b. Vendor & Admin Auth (frontend mock)
+## 10b. User & Admin Auth (frontend mock)
 
-Backend auth ekhono nei, tai sob kichu `localStorage`-er `kinbo_mock_auth` key-e thake (`lib/auth/auth-store.ts`)। Backend ashle ei file-er function-gulo API call diye replace korlei hobe — UI bodlate hobe na।
+Backend auth ekhono nei, tai session `localStorage`-er `kinbo_mock_auth` key-e thake (`lib/auth/auth-store.ts`)।
 
 **Demo account** (`lib/auth/demo-accounts.ts`):
 
-| Role | Email | Password | Obostha |
+| Role | Email | Password | Goes to |
 |---|---|---|---|
-| Verified vendor | `verified@kinbo.com` | `Vendor@123` | Approved → Dashboard |
-| Unverified vendor | `pending@kinbo.com` | `Vendor@123` | Admin review pending |
-| Admin | `admin@kinbo.com` | `Admin@123` | Application approve/reject |
+| User | `user@kinbo.com` | `User@123` | `/account` |
+| Admin | `admin@kinbo.com` | `Admin@123` | `/admin/dashboard` |
 
-Login page-er "Demo accounts" box-e click korle form bhore jay। "Reset demo data" button sob ager obosthay ferot ney।
+Login: `/login` (User / Admin tabs)। Admin redirect: `/admin/login` → `/login?role=admin`।
 
-**Vendor flow (5 step):**
-
-| Step | Route | Ki hoy |
-|---|---|---|
-| 1. Signup | `/vendor/signup` | Full name, email, BD phone, password (strength meter), terms |
-| 2. Verify | `/vendor/verify` | 6-digit OTP (paste, resend 30s)। Demo-te code page-ei dekhay। Verify hole → login (email prefilled) |
-| 3. Store info | `/vendor/onboarding` | 6 section + bam-e sticky progress nav: **Store** (name, type, description, category ≤3 — logo/banner nei, karon shob product Kinbo brand-e bikri hoy) · **Contact** (signup email/phone locked "Verified · Primary", +2 extra email/phone) · **Address** (address, area, city, postal code) · **NID** (number + front* + back* image, owner photo) · **Documents** (trade license number + copy — individual chara required; e-TIN — limited company-te required; other docs ≤5) · **Payment** (bank/bKash/Nagad, routing no., cheque/screenshot proof, "pore add korbo") |
-| 4. Review | `/vendor/status` | Pending / Approved / Rejected + timeline; rejected hole admin-er reason + "Edit & Resubmit" (form prefilled) |
-| 5. Dashboard | `/vendor/dashboard` | Shudhu approved vendor; sidebar + header shell, baki page "Soon" |
-
-**Guard:** protita page `RouteGuard step="..."` diye wrap kora (`components/auth/RouteGuard.tsx`)। `vendorHomeRoute(vendor)` thik kore vendor ekhon kon step-e — keu step skip korte parbe na (jemon pending vendor `/vendor/dashboard`-e gele `/vendor/status`-e chole jay)। Auth state `useSyncExternalStore` diye pora, server-e `ready: false`, tai hydration mismatch hoy na।
-
-**Admin:** `/admin/login`, `/admin/dashboard` (count card + recent applications), `/admin/vendors` (tab filter, table, Review modal-e Approve / Reject with reason)।
-
-**Common component:**
-- `components/auth/AuthLayout` — split-screen (bam-e brand panel, dan-e form); `step` dile stepper, `wide` dile lomba form-er jonno centered layout, `variant="admin"`।
-- `components/auth/LoginForm` — vendor ar admin duijon-i use kore (`onSubmit`, `demoAccounts` props)।
-- `components/dashboard/DashboardShell` — sidebar + header (search, notification, user menu/sign out)। Nav `components/dashboard/nav-config.ts`-e; `soon: true` item disabled thake। Notun page banale shudhu `soon` muche din।
-- `components/forms/` — `FileUploadField` (single file, preview, drag & drop, replace/remove, `aspect="card" | "square" | "wide"`), `MultiValueField` (email/phone list, prothom-ta lock), `SelectField`।
-- Image upload `lib/file-utils.ts`-er `toUploadedFile` diye ~1000px JPEG-e compress hoy, jate `localStorage`-e fit kore; PDF-er shudhu nam/size thake। Backend ashle ekhane file upload API boshabe।
-- Form logic (`views/vendor/onboarding/form-model.ts`) — values, validation, section completion; `lib/auth/store-utils.ts`-er `storeDocuments()` status page ar admin `DocumentGallery`-te sob document label shoho dey।
-- `/vendor` ar `/admin` route-e cart drawer ar support chat lukano thake (`components/layout/StorefrontOnly.tsx`)।
+**Admin:** `/admin/dashboard` (product stats), `/admin/products` (add catalog items; stored in `localStorage` via `lib/catalog/catalog-store.ts`)। Guard: `RouteGuard step="admin"`। Sidebar: `components/dashboard/DashboardShell` + `nav-config.ts`। `/admin` route-e cart/support chat lukano (`StorefrontOnly`)।
 
 ---
 

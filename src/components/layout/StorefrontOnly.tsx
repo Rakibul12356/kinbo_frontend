@@ -3,7 +3,7 @@
 import React, { Suspense } from "react";
 import { usePathname } from "next/navigation";
 
-const NON_STOREFRONT_PREFIXES = ["/vendor", "/admin"];
+const NON_STOREFRONT_PREFIXES = ["/admin"];
 
 function StorefrontContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -13,7 +13,7 @@ function StorefrontContent({ children }: { children: React.ReactNode }) {
   return hidden ? null : <>{children}</>;
 }
 
-/** Hides shopper-only UI (cart drawer, support chat) on seller and admin pages. */
+/** Hides shopper-only UI (cart drawer, support chat) on admin pages. */
 export default function StorefrontOnly({ children }: { children: React.ReactNode }) {
   return (
     <Suspense fallback={<>{children}</>}>

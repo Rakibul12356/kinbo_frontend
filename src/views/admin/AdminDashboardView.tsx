@@ -2,38 +2,41 @@
 
 import React from "react";
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, Clock, Package, Store, XCircle } from "lucide-react";
+import { ArrowRight, Package, ShoppingBag, Sparkles } from "lucide-react";
 import StatCard from "@/components/dashboard/StatCard";
 import RouteGuard from "@/components/auth/RouteGuard";
-import { useAuth } from "@/hooks/use-auth";
 import { useAddedProducts } from "@/hooks/use-catalog";
 import { PRODUCTS_DATA } from "@/data/products";
 import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
 import AdminShell from "./AdminShell";
-import VendorStatusBadge from "./VendorStatusBadge";
 
 function DashboardContent() {
-  const { vendors } = useAuth();
   const addedProducts = useAddedProducts();
-  const applications = vendors.filter((v) => v.store);
-  const count = (status: string) => applications.filter((v) => v.status === status).length;
-  const recent = [...applications]
-    .sort((a, b) => (b.submittedAt ?? "").localeCompare(a.submittedAt ?? ""))
-    .slice(0, 5);
+  const totalProducts = PRODUCTS_DATA.length + addedProducts.length;
+  const featuredCount = [...addedProducts, ...PRODUCTS_DATA].filter((p) => p.isFeatured).length;
 
   return (
-    <AdminShell title="Admin Dashboard" description="Marketplace overview and catalog.">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <AdminShell title="Admin Dashboard" description="Catalog overview.">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard
           label="Products"
-          value={PRODUCTS_DATA.length + addedProducts.length}
+          value={totalProducts}
           icon={Package}
           hint={`${addedProducts.length} added from this dashboard`}
         />
-        <StatCard label="Total Vendors" value={vendors.length} icon={Store} hint="Including incomplete signups" />
-        <StatCard label="Pending Review" value={count("pending")} icon={Clock} accent="bg-amber-50 text-amber-600" />
-        <StatCard label="Approved" value={count("approved")} icon={BadgeCheck} accent="bg-emerald-50 text-emerald-600" />
-        <StatCard label="Rejected" value={count("rejected")} icon={XCircle} accent="bg-rose-50 text-rose-600" />
+        <StatCard
+          label="Featured"
+          value={featuredCount}
+          icon={Sparkles}
+          accent="bg-amber-50 text-amber-600"
+        />
+        <StatCard
+          label="Orders"
+          value="—"
+          icon={ShoppingBag}
+          hint="Coming soon"
+          accent="bg-zinc-100 text-zinc-500"
+        />
       </div>
 
       <section className="mt-6 flex flex-col gap-3 rounded-2xl border border-[#E5E7EB] bg-[#082F6B] px-5 py-4 text-white sm:flex-row sm:items-center sm:justify-between">
@@ -50,29 +53,33 @@ function DashboardContent() {
       </section>
 
       <section className="mt-6 rounded-2xl border border-[#E5E7EB] bg-white shadow-xs">
-        <div className="flex items-center justify-between border-b border-[#E5E7EB] px-5 py-4">
-          <h2 className="text-base font-bold text-[#1F2937]">Recent applications</h2>
-          <Link
-            href={ADMIN_ROUTES.vendors}
-            className="inline-flex items-center gap-1 text-sm font-semibold text-[#082F6B] hover:underline"
-          >
-            View all <ArrowRight className="h-4 w-4" />
-          </Link>
+        <div className="border-b border-[#E5E7EB] px-5 py-4">
+          <h2 className="text-base font-bold text-[#1F2937]">Recently added</h2>
         </div>
-        {recent.length === 0 ? (
-          <p className="px-5 py-10 text-center text-sm text-zinc-500">No applications yet.</p>
+        {addedProducts.length === 0 ? (
+          <p className="px-5 py-10 text-center text-sm text-zinc-500">
+            No products added yet. Open Products to publish one.
+          </p>
         ) : (
           <ul className="divide-y divide-[#E5E7EB]">
-            {recent.map((v) => (
-              <li key={v.id} className="flex items-center gap-3 px-5 py-3.5">
+            {addedProducts.slice(0, 5).map((product) => (
+              <li key={product.id} className="flex items-center gap-3 px-5 py-3.5">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#082F6B]/10 text-sm font-bold text-[#082F6B]">
-                  {v.store!.storeName.charAt(0)}
+                  {product.name.charAt(0)}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-[#1F2937]">{v.store!.storeName}</p>
-                  <p className="truncate text-xs text-zinc-500">{v.fullName} · {v.email}</p>
+                  <p className="truncate text-sm font-semibold text-[#1F2937]">{product.name}</p>
+                  <p className="truncate text-xs text-zinc-500">
+                    {product.category}
+                    {product.subcategory ? ` · ${product.subcategory}` : ""}
+                  </p>
                 </div>
-                <VendorStatusBadge status={v.status} />
+                <Link
+                  href={`/products/${product.id}`}
+                  className="text-xs font-semibold text-[#082F6B] hover:underline"
+                >
+                  View
+                </Link>
               </li>
             ))}
           </ul>

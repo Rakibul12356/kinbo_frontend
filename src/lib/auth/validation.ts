@@ -1,10 +1,13 @@
-import { normalizePhone } from "./auth-store";
-
 export const validateName = (v: string) =>
   v.trim().length < 3 ? "Enter your full name (at least 3 characters)." : undefined;
 
 export const validateEmail = (v: string) =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) ? undefined : "Enter a valid email address.";
+
+function normalizePhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  return digits.startsWith("880") ? `0${digits.slice(3)}` : digits;
+}
 
 /** Bangladeshi mobile: 01XXXXXXXXX, optionally prefixed with +880 / 880. */
 export const validatePhone = (v: string) =>
