@@ -71,7 +71,7 @@ export default function CategoryExpandSlider() {
 
   return (
     <section className="overflow-hidden bg-white border-b border-[#E5E7EB] py-8 sm:py-12">
-      <div className="container mx-auto max-w-full px-4 sm:px-6">
+      <div className="mx-auto w-full container px-4 sm:px-6">
         <div className="mb-5 flex items-center justify-between gap-3 sm:mb-6 sm:gap-4">
           <h2 className="text-xl sm:text-3xl font-extrabold tracking-tight text-[#1F2937]">
             Shop By Category

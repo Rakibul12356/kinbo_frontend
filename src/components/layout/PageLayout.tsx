@@ -12,9 +12,9 @@ interface PageLayoutProps {
 
 export default function PageLayout({ children, onSearchChange, className = "" }: PageLayoutProps) {
   return (
-    <div className={`min-h-screen flex flex-col justify-between overflow-x-hidden ${className}`.trim()}>
+    <div className={`min-h-screen flex flex-col justify-between ${className}`.trim()}>
       <Navbar onSearchChange={onSearchChange} />
-      {children}
+      <div className="min-w-0 flex-1 overflow-x-clip">{children}</div>
       <Footer />
     </div>
   );

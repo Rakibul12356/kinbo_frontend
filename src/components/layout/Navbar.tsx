@@ -112,7 +112,7 @@ export default function Navbar({ onSearchChange }: NavbarProps) {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[#E5E7EB] bg-white/95 backdrop-blur-md">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
+      <div className="mx-auto w-full container px-4 sm:px-6">
         <div className="flex h-14 sm:h-16 items-center gap-2">
           <Link href="/" className="relative z-10 flex shrink-0 items-center" aria-label="Kinbo home">
             <Image
