@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { Product } from "@/types/ecommerce";
 import { useCart } from "@/hooks/use-cart";
@@ -11,10 +11,8 @@ import {
   Star,
   ShoppingCart,
   Check,
-  Heart,
   Rocket,
   FileText,
-  TrendingUp,
   ChevronRight,
 } from "lucide-react";
 
@@ -22,20 +20,11 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const { addToCart, isInCart } = useCart();
   const isClient = useIsClient();
   const [activeIndex, setActiveIndex] = useState(0);
-  const [liked, setLiked] = useState(false);
   const isAdded = isClient && isInCart(product.id);
 
   const images = product.images.length > 0 ? product.images : ["/images/logo.png"];
   const activeImage = images[Math.min(activeIndex, images.length - 1)];
   const discountPercent = calculateDiscount(product.price, product.originalPrice);
-  const viewCount = useMemo(
-    () => 10000 + product.reviewCount * 37 + product.id.length * 123,
-    [product.id, product.reviewCount]
-  );
-  const wishCount = useMemo(
-    () => 80 + (product.reviewCount % 40) * 7,
-    [product.reviewCount]
-  );
 
   const categoryHref = categoryListingHref(slugify(product.category));
   const aboutPoints = [
@@ -95,17 +84,6 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                   <span>{product.deliveryTime || "12-24 HOURS"}</span>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setLiked((v) => !v)}
-                className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#1F2937] shadow-sm transition hover:bg-[#F3F7FC] cursor-pointer"
-                aria-label="Add to wishlist"
-              >
-                <Heart
-                  className={`w-4 h-4 ${liked ? "fill-rose-500 text-rose-500" : "text-zinc-400"}`}
-                />
-                <span>{wishCount + (liked ? 1 : 0)}</span>
-              </button>
             </div>
 
             {images.length > 1 && (
@@ -131,24 +109,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
 
         {/* Purchase panel */}
         <section className="rounded-2xl border border-[#E5E7EB] bg-white overflow-hidden flex flex-col h-full">
-          <div className="flex items-center justify-between gap-3 bg-[#082F6B] px-4 py-2.5 text-white">
-            <p className="text-xs sm:text-sm font-medium leading-snug">
-              Sign in for member deals and faster checkout.
-            </p>
-            <Link
-              href="/login"
-              className="shrink-0 rounded-md border border-white/40 px-3 py-1 text-xs font-bold hover:bg-white/10 transition"
-            >
-              Register
-            </Link>
-          </div>
-
           <div className="flex-1 p-4 sm:p-5 space-y-4">
-            <p className="inline-flex items-center gap-1.5 text-xs text-zinc-500">
-              <TrendingUp className="w-3.5 h-3.5 text-[#082F6B]" />
-              <span>{viewCount.toLocaleString()} people viewed this</span>
-            </p>
-
             <h1 className="text-xl sm:text-2xl font-extrabold text-[#1F2937] leading-snug">
               {product.name}
             </h1>
