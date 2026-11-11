@@ -71,6 +71,21 @@ export const AVAILABILITY_OPTIONS: FilterOption[] = [
   { label: "On discount", value: "on-discount" },
 ];
 
+export const DEFAULT_FILTER_SECTIONS: FilterSectionConfig[] = [
+  { type: "price" },
+  { type: "discount" },
+  { type: "rating" },
+  {
+    type: "facet",
+    id: "tags",
+    title: "Product Tags",
+    field: "tags",
+    searchable: true,
+    searchPlaceholder: "Select Tags",
+  },
+  { type: "availability" },
+];
+
 export function pricePresetLabel(preset: PricePreset): string {
   if (preset.label) return preset.label;
   if (preset.min === undefined && preset.max !== undefined) return `Under ${formatPrice(preset.max)}`;

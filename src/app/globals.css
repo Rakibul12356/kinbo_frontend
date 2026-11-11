@@ -46,6 +46,36 @@ body {
   --toastify-font-family: var(--font-inter), Arial, Helvetica, sans-serif;
 }
 
+/* Thin, light scrollbars site-wide (Firefox + Chromium/WebKit). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c5ceda transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #c5ceda;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #082f6b99;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 @utility scrollbar-none {
   scrollbar-width: none;
   &::-webkit-scrollbar {

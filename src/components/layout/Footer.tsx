@@ -60,7 +60,6 @@ const services = [
 ];
 
 const usefulLinks = [
-  { label: "Blog", href: "/blog" },
   { label: "FAQ", href: "/faq" },
   { label: "Account", href: "/account" },
   { label: "Track My Order", href: "/orders" },

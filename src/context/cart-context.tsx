@@ -22,25 +22,14 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 function CartToast({
   productName,
   message,
-  onViewCart,
 }: {
   productName: string;
   message: string;
-  onViewCart: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 w-full">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-[#082F6B]">{message}</p>
-        <p className="text-xs text-zinc-500 truncate">{productName}</p>
-      </div>
-      <button
-        type="button"
-        onClick={onViewCart}
-        className="shrink-0 rounded-lg bg-[#082F6B] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#062452] transition cursor-pointer"
-      >
-        View Cart
-      </button>
+    <div className="min-w-0 w-full">
+      <p className="text-sm font-bold text-[#082F6B]">{message}</p>
+      <p className="text-xs text-zinc-500 truncate">{productName}</p>
     </div>
   );
 }
@@ -87,10 +76,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       <CartToast
         productName={product.name}
         message={alreadyInCart ? "Quantity updated in cart" : "Added to cart"}
-        onViewCart={() => {
-          toast.dismiss(toastId);
-          setIsCartOpen(true);
-        }}
       />
     );
     if (toast.isActive(toastId)) {
