@@ -27,13 +27,13 @@ export function adminNav(unreadNotifications = 0): NavGroup[] {
       items: [
         { label: "Products", href: "/admin/products", icon: Package },
         { label: "Orders", href: "/admin/orders", icon: ShoppingBag },
-        { label: "Customers", href: "/admin/customers", icon: Users, soon: true },
-        { label: "Reports", href: "/admin/reports", icon: BarChart3, soon: true },
+        { label: "Customers", href: "/admin/customers", icon: Users },
+        { label: "Reports", href: "/admin/reports", icon: BarChart3 },
       ],
     },
     {
       title: "System",
-      items: [{ label: "Settings", href: "/admin/settings", icon: Settings, soon: true }],
+      items: [{ label: "Settings", href: "/admin/settings", icon: Settings }],
     },
   ];
 }
