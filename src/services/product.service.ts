@@ -1,7 +1,8 @@
 import apiClient from "@/lib/axios";
-import { getAddedProducts } from "@/lib/catalog/catalog-store";
+import { getCatalogProducts } from "@/lib/catalog/catalog-store";
 import { CATEGORY_NAMES } from "@/lib/categories";
 import { Product } from "@/types/ecommerce";
+import { PRODUCTS_DATA } from "@/data/products";
 
 export interface ProductFilterParams {
   category?: string;
@@ -9,20 +10,15 @@ export interface ProductFilterParams {
   search?: string;
 }
 
-import { PRODUCTS_DATA } from "@/data/products";
-
 // Fallback demo products loaded from products.json
 export const DEMO_PRODUCTS: Product[] = PRODUCTS_DATA;
-
 
 const equalsIgnoreCase = (a?: string, b?: string) =>
   Boolean(a && b && a.toLowerCase() === b.toLowerCase());
 
 function allProducts(): Product[] {
-  const added = getAddedProducts();
-  if (added.length === 0) return DEMO_PRODUCTS;
-  const ids = new Set(DEMO_PRODUCTS.map((product) => product.id));
-  return [...added.filter((product) => !ids.has(product.id)), ...DEMO_PRODUCTS];
+  if (typeof window === "undefined") return DEMO_PRODUCTS;
+  return getCatalogProducts();
 }
 
 export const productService = {

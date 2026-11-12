@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   ChevronLeft,
   ChevronRight,
@@ -11,13 +10,12 @@ import {
   Package,
   PackagePlus,
   Search,
-  Trash2,
 } from "lucide-react";
-import { toast } from "react-toastify";
 import RouteGuard from "@/components/auth/RouteGuard";
+import ProductRowActions from "@/components/admin/ProductRowActions";
 import { useAddedProducts, useCatalogProducts } from "@/hooks/use-catalog";
 import { CATEGORIES } from "@/lib/categories";
-import { removeCatalogProduct } from "@/lib/catalog/catalog-store";
+import { isAdminOwnedProduct } from "@/lib/catalog/catalog-store";
 import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
 import { formatPrice } from "@/lib/utils";
 import type { Product } from "@/types/ecommerce";
@@ -28,10 +26,6 @@ const PAGE_SIZE = 10;
 type StockFilter = "all" | "in_stock" | "low" | "out";
 type SourceFilter = "all" | "admin" | "catalog";
 
-function isAdminProduct(product: Product) {
-  return product.id.startsWith("prod-admin-") || product.tags?.includes("Admin");
-}
-
 function stockLabel(stock: number) {
   if (stock <= 0) return { text: "Out of stock", className: "bg-rose-50 text-rose-700 border-rose-200" };
   if (stock <= 5) return { text: "Low stock", className: "bg-amber-50 text-amber-700 border-amber-200" };
@@ -41,7 +35,6 @@ function stockLabel(stock: number) {
 function ProductsContent() {
   const products = useCatalogProducts();
   const added = useAddedProducts();
-  const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
@@ -53,8 +46,8 @@ function ProductsContent() {
     const q = search.trim().toLowerCase();
     return products.filter((product) => {
       if (category !== "all" && product.category !== category) return false;
-      if (sourceFilter === "admin" && !isAdminProduct(product)) return false;
-      if (sourceFilter === "catalog" && isAdminProduct(product)) return false;
+      if (sourceFilter === "admin" && !isAdminOwnedProduct(product)) return false;
+      if (sourceFilter === "catalog" && isAdminOwnedProduct(product)) return false;
       if (stockFilter === "in_stock" && product.stock <= 5) return false;
       if (stockFilter === "low" && (product.stock <= 0 || product.stock > 5)) return false;
       if (stockFilter === "out" && product.stock > 0) return false;
@@ -180,13 +173,13 @@ function ProductsContent() {
                     <th className="px-4 py-3 font-semibold">Price</th>
                     <th className="px-4 py-3 font-semibold">Stock</th>
                     <th className="px-4 py-3 font-semibold">Source</th>
-                    <th className="px-4 py-3 font-semibold"> </th>
+                    <th className="px-4 py-3 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E5E7EB]">
                   {paged.map((product) => {
                     const stock = stockLabel(product.stock);
-                    const admin = isAdminProduct(product);
+                    const admin = isAdminOwnedProduct(product);
                     return (
                       <tr key={product.id} className="align-middle">
                         <td className="px-4 py-3">
@@ -238,22 +231,7 @@ function ProductsContent() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          {admin ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                removeCatalogProduct(product.id);
-                                queryClient.invalidateQueries({ queryKey: ["products"] });
-                                toast.success("Product removed.");
-                              }}
-                              className="rounded-lg p-2 text-zinc-400 transition hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
-                              aria-label={`Remove ${product.name}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          ) : (
-                            <span className="text-[11px] text-zinc-300">—</span>
-                          )}
+                          <ProductRowActions product={product} />
                         </td>
                       </tr>
                     );

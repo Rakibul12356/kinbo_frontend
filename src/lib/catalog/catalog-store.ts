@@ -3,7 +3,7 @@ import { slugify } from "@/lib/categories";
 import type { Product } from "@/types/ecommerce";
 
 const STORAGE_KEY = "kinbo_catalog_products";
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = 2;
 const EMPTY: Product[] = [];
 
 export const PLACEHOLDER_PRODUCT_IMAGE =
@@ -21,38 +21,80 @@ export interface NewProductInput {
   isFeatured?: boolean;
 }
 
-let added: Product[] | null = null;
+export type ProductUpdateInput = NewProductInput;
+
+type CatalogState = {
+  products: Product[];
+  overrides: Record<string, Partial<Product>>;
+  removedIds: string[];
+};
+
+const EMPTY_STATE: CatalogState = { products: [], overrides: {}, removedIds: [] };
+
+let state: CatalogState | null = null;
+/** Cached for useSyncExternalStore — getSnapshot must return a stable reference. */
+let catalogSnapshot: Product[] | null = null;
 const listeners = new Set<() => void>();
 
-function load(): Product[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as { version?: number; products?: Product[] };
-      if (parsed.version === STORAGE_VERSION && Array.isArray(parsed.products)) {
-        return parsed.products;
-      }
-    }
-  } catch {
-    // Ignore corrupt catalog data and start from the demo catalog.
-  }
-  return [];
+function invalidateCatalogSnapshot() {
+  catalogSnapshot = null;
 }
 
-function persist(products: Product[]) {
-  added = products;
+function load(): CatalogState {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: STORAGE_VERSION, products }));
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { ...EMPTY_STATE };
+    const parsed = JSON.parse(raw) as {
+      version?: number;
+      products?: Product[];
+      overrides?: Record<string, Partial<Product>>;
+      removedIds?: string[];
+    };
+    if (parsed.version === STORAGE_VERSION && Array.isArray(parsed.products)) {
+      return {
+        products: parsed.products,
+        overrides: parsed.overrides ?? {},
+        removedIds: parsed.removedIds ?? [],
+      };
+    }
+    // Migrate v1 (admin products only).
+    if (parsed.version === 1 && Array.isArray(parsed.products)) {
+      return { products: parsed.products, overrides: {}, removedIds: [] };
+    }
   } catch {
-    // Keep the in-memory catalog if storage is full.
+    // Ignore corrupt catalog data.
+  }
+  return { ...EMPTY_STATE };
+}
+
+function getState(): CatalogState {
+  if (typeof window === "undefined") return EMPTY_STATE;
+  if (!state) state = load();
+  return state;
+}
+
+function persist(next: CatalogState) {
+  state = next;
+  invalidateCatalogSnapshot();
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        version: STORAGE_VERSION,
+        products: next.products,
+        overrides: next.overrides,
+        removedIds: next.removedIds,
+      })
+    );
+  } catch {
+    // Keep in-memory state if storage is full.
   }
   listeners.forEach((listener) => listener());
 }
 
 export function getAddedProducts(): Product[] {
   if (typeof window === "undefined") return EMPTY;
-  if (!added) added = load();
-  return added;
+  return getState().products;
 }
 
 export function getServerAddedProducts(): Product[] {
@@ -63,7 +105,8 @@ export function subscribeCatalog(listener: () => void) {
   listeners.add(listener);
   const onStorage = (event: StorageEvent) => {
     if (event.key === STORAGE_KEY) {
-      added = load();
+      state = load();
+      invalidateCatalogSnapshot();
       listener();
     }
   };
@@ -75,11 +118,23 @@ export function subscribeCatalog(listener: () => void) {
 }
 
 export function getCatalogProducts(): Product[] {
-  return [...getAddedProducts(), ...PRODUCTS_DATA];
+  if (catalogSnapshot) return catalogSnapshot;
+  const { products, overrides, removedIds } = getState();
+  const removed = new Set(removedIds);
+  const catalog = PRODUCTS_DATA.filter((product) => !removed.has(product.id)).map((product) => {
+    const patch = overrides[product.id];
+    return patch ? { ...product, ...patch, id: product.id } : product;
+  });
+  catalogSnapshot = [...products, ...catalog];
+  return catalogSnapshot;
 }
 
 export function findCatalogProduct(idOrSlug: string): Product | undefined {
   return getCatalogProducts().find((product) => product.id === idOrSlug || product.slug === idOrSlug);
+}
+
+export function isAdminOwnedProduct(product: Product) {
+  return product.id.startsWith("prod-admin-") || product.tags?.includes("Admin") === true;
 }
 
 export function addCatalogProduct(input: NewProductInput): Product {
@@ -104,10 +159,97 @@ export function addCatalogProduct(input: NewProductInput): Product {
     unit: "Piece",
     tags: ["Admin"],
   };
-  persist([product, ...getAddedProducts()]);
+  const current = getState();
+  persist({ ...current, products: [product, ...current.products] });
   return product;
 }
 
+function applyFields(product: Product, input: ProductUpdateInput): Product {
+  return {
+    ...product,
+    name: input.name.trim(),
+    description: input.description.trim(),
+    price: input.price,
+    originalPrice: input.originalPrice,
+    category: input.category,
+    subcategory: input.subcategory || undefined,
+    stock: input.stock,
+    images: [input.imageUrl?.trim() || product.images[0] || PLACEHOLDER_PRODUCT_IMAGE],
+    isFeatured: input.isFeatured,
+  };
+}
+
+export function updateCatalogProduct(id: string, input: ProductUpdateInput): Product | null {
+  const current = getState();
+  const adminIndex = current.products.findIndex((product) => product.id === id);
+  if (adminIndex >= 0) {
+    const updated = applyFields(current.products[adminIndex], input);
+    const products = current.products.map((product, index) =>
+      index === adminIndex ? updated : product
+    );
+    persist({ ...current, products });
+    return updated;
+  }
+
+  const base = PRODUCTS_DATA.find((product) => product.id === id);
+  if (!base || current.removedIds.includes(id)) return null;
+
+  const merged = applyFields({ ...base, ...current.overrides[id] }, input);
+  persist({
+    ...current,
+    overrides: {
+      ...current.overrides,
+      [id]: {
+        name: merged.name,
+        description: merged.description,
+        price: merged.price,
+        originalPrice: merged.originalPrice,
+        category: merged.category,
+        subcategory: merged.subcategory,
+        stock: merged.stock,
+        images: merged.images,
+        isFeatured: merged.isFeatured,
+      },
+    },
+  });
+  return merged;
+}
+
+export function setCatalogProductOutOfStock(id: string): Product | null {
+  const product = findCatalogProduct(id);
+  if (!product) return null;
+  return updateCatalogProduct(id, {
+    name: product.name,
+    description: product.description,
+    price: product.price,
+    originalPrice: product.originalPrice,
+    category: product.category,
+    subcategory: product.subcategory,
+    stock: 0,
+    imageUrl: product.images[0],
+    isFeatured: product.isFeatured,
+  });
+}
+
 export function removeCatalogProduct(id: string) {
-  persist(getAddedProducts().filter((product) => product.id !== id));
+  const current = getState();
+  const overrides = { ...current.overrides };
+  delete overrides[id];
+
+  if (current.products.some((product) => product.id === id)) {
+    persist({
+      ...current,
+      products: current.products.filter((product) => product.id !== id),
+      overrides,
+    });
+    return;
+  }
+  if (!PRODUCTS_DATA.some((product) => product.id === id)) return;
+  persist({
+    ...current,
+    overrides,
+    removedIds: current.removedIds.includes(id)
+      ? current.removedIds
+      : [...current.removedIds, id],
+  });
 }

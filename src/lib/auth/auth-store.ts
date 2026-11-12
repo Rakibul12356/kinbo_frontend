@@ -24,6 +24,7 @@ export const ADMIN_ROUTES = {
   dashboard: "/admin/dashboard",
   products: "/admin/products",
   productNew: "/admin/products/new",
+  productEdit: (id: string) => `/admin/products/${id}/edit`,
   orders: "/admin/orders",
   notifications: "/admin/notifications",
 } as const;
