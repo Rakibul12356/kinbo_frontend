@@ -47,13 +47,10 @@ function Sidebar({
 }) {
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-16 shrink-0 items-center gap-2 border-b border-[#E5E7EB] px-5">
+      <div className="flex h-16 shrink-0 items-center border-b border-[#E5E7EB] px-5">
         <Link href="/" aria-label="Kinbo home">
           <Image src="/images/logo-trimmed.png" alt="Kinbo" width={131} height={36} className="h-7 w-auto" style={{ width: "auto" }} />
         </Link>
-        <span className="rounded-md bg-[#FF6B00]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#FF6B00]">
-          {brandLabel}
-        </span>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6" aria-label={`${brandLabel} navigation`}>
