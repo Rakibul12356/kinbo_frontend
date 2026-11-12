@@ -20,6 +20,7 @@ const STATUS_OPTIONS: StoreOrder["status"][] = [
   "shipped",
   "delivered",
   "cancelled",
+  "returned",
 ];
 
 function statusClass(status: StoreOrder["status"]) {
@@ -34,6 +35,8 @@ function statusClass(status: StoreOrder["status"]) {
       return "bg-emerald-50 text-emerald-700 border-emerald-200";
     case "cancelled":
       return "bg-rose-50 text-rose-700 border-rose-200";
+    case "returned":
+      return "bg-orange-50 text-orange-700 border-orange-200";
   }
 }
 

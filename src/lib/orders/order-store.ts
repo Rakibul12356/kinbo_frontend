@@ -25,7 +25,7 @@ export interface ShippingInfo {
 export interface StoreOrder {
   id: string;
   createdAt: string;
-  status: "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
+  status: "pending" | "confirmed" | "shipped" | "delivered" | "cancelled" | "returned";
   shipping: ShippingInfo;
   items: OrderItem[];
   subtotal: number;

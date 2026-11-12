@@ -11,7 +11,7 @@ import type { NavGroup } from "./DashboardShell";
 export function adminNav(): NavGroup[] {
   return [
     {
-      items: [{ label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard }],
+      items: [{ label: "Overview", href: "/admin/dashboard", icon: LayoutDashboard }],
     },
     {
       title: "Marketplace",
