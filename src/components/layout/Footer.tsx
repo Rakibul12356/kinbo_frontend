@@ -15,6 +15,8 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import { useT } from "@/hooks/use-t";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 const socialLinks: { label: string; href: string; icon: LucideIcon; className: string }[] = [
   {
@@ -43,29 +45,6 @@ const socialLinks: { label: string; href: string; icon: LucideIcon; className: s
   },
 ];
 
-const quickLinks = [
-  { label: "About Us", href: "/about" },
-  { label: "Careers", href: "/careers" },
-  { label: "Privacy Policy", href: "/privacy" },
-  { label: "Terms and Conditions", href: "/terms" },
-  { label: "Return and Refund Policy", href: "/refund-policy" },
-];
-
-const services = [
-  { label: "Express Home Delivery", href: "/products" },
-  { label: "100% Genuine Guaranteed", href: "/products" },
-  { label: "Easy Returns & Replacement", href: "/refund-policy" },
-  { label: "Corporate & Bulk Orders", href: "/contact" },
-  { label: "Gift Cards & Promotions", href: "/products" },
-];
-
-const usefulLinks = [
-  { label: "FAQ", href: "/faq" },
-  { label: "Account", href: "/account" },
-  { label: "Track My Order", href: "/orders" },
-  { label: "Contact Us", href: "/contact" },
-];
-
 function LinkColumn({
   title,
   links,
@@ -78,7 +57,7 @@ function LinkColumn({
       <h4 className="text-xl font-medium text-[#1F2937] mb-6">{title}</h4>
       <ul className="space-y-3 text-sm text-zinc-700">
         {links.map((l) => (
-          <li key={l.label}>
+          <li key={l.href + l.label}>
             <Link href={l.href} className="hover:text-[#006AFF] transition-colors">
               {l.label}
             </Link>
@@ -90,14 +69,39 @@ function LinkColumn({
 }
 
 export default function Footer() {
+  const t = useT();
+
+  const quickLinks: { labelKey: MessageKey; href: string }[] = [
+    { labelKey: "footer.about", href: "/about" },
+    { labelKey: "footer.careers", href: "/careers" },
+    { labelKey: "footer.privacy", href: "/privacy" },
+    { labelKey: "footer.terms", href: "/terms" },
+    { labelKey: "footer.refund", href: "/refund-policy" },
+  ];
+
+  const services: { labelKey: MessageKey; href: string }[] = [
+    { labelKey: "footer.express", href: "/products" },
+    { labelKey: "footer.genuine", href: "/products" },
+    { labelKey: "footer.returns", href: "/refund-policy" },
+    { labelKey: "footer.corporate", href: "/contact" },
+    { labelKey: "footer.gifts", href: "/products" },
+  ];
+
+  const usefulLinks: { labelKey: MessageKey; href: string }[] = [
+    { labelKey: "footer.faq", href: "/faq" },
+    { labelKey: "footer.account", href: "/account" },
+    { labelKey: "footer.track", href: "/orders" },
+    { labelKey: "footer.contactUs", href: "/contact" },
+  ];
+
   return (
     <footer className="border-t border-[#E5E7EB] bg-white text-zinc-700 text-sm">
-      <div className="container mx-auto px-4 sm:px-6 pt-12 sm:pt-14 pb-8">
+      <div className="mx-auto w-full container px-4 sm:px-6 pt-12 sm:pt-14 pb-8">
         <div className="space-y-12 sm:space-y-14">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 lg:gap-8">
             <div className="space-y-5">
               <div className="h-12 flex items-center">
-                <Link href="/" className="inline-flex items-center" aria-label="Kinbo home">
+                <Link href="/" className="inline-flex items-center" aria-label={t("nav.home")}>
                   <Image
                     src="/images/logo-trimmed.png"
                     alt="Kinbo"
@@ -109,43 +113,61 @@ export default function Footer() {
                   />
                 </Link>
               </div>
-              <p className="text-sm text-zinc-700 leading-relaxed max-w-xs">
-                The Premier Multi-Category E-Commerce Platform for Bangladesh.
-              </p>
+              <p className="text-sm text-zinc-700 leading-relaxed max-w-xs">{t("footer.tagline")}</p>
+              <div className="flex flex-wrap gap-2">
+                {socialLinks.map((s) => {
+                  const Icon = s.icon;
+                  return (
+                    <a
+                      key={s.label}
+                      href={s.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={s.label}
+                      className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition ${s.className}`}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </a>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="space-y-5">
               <div className="h-12 flex items-center">
                 <BadgeCheck className="w-12 h-12 text-[#006AFF]" strokeWidth={1.75} />
               </div>
-              <p className="text-sm text-zinc-700 leading-relaxed max-w-xs">
-                Authentic products sourced from verified manufacturers, distributors and
-                importers.
-              </p>
+              <p className="text-sm text-zinc-700 leading-relaxed max-w-xs">{t("footer.authentic")}</p>
             </div>
 
             <div className="space-y-5">
               <div className="h-12 flex items-center">
                 <Users className="w-12 h-12 text-teal-700" strokeWidth={2} fill="currentColor" />
               </div>
-              <p className="text-sm text-zinc-700 leading-relaxed max-w-xs">
-                Our customers are at the heart of everything we do, with dedicated 24/7 care.
-              </p>
+              <p className="text-sm text-zinc-700 leading-relaxed max-w-xs">{t("footer.customers")}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
-            <LinkColumn title="Quick Links" links={quickLinks} />
-            <LinkColumn title="Our Services" links={services} />
-            <LinkColumn title="Useful Links" links={usefulLinks} />
+            <LinkColumn
+              title={t("footer.quickLinks")}
+              links={quickLinks.map((l) => ({ label: t(l.labelKey), href: l.href }))}
+            />
+            <LinkColumn
+              title={t("footer.services")}
+              links={services.map((l) => ({ label: t(l.labelKey), href: l.href }))}
+            />
+            <LinkColumn
+              title={t("footer.usefulLinks")}
+              links={usefulLinks.map((l) => ({ label: t(l.labelKey), href: l.href }))}
+            />
 
             <div>
-
-              <h4 className="text-xl font-medium text-[#1F2937] mb-6">Contact Info</h4>
+              <h4 className="text-xl font-medium text-[#1F2937] mb-6">{t("footer.contact")}</h4>
               <div className="space-y-3 text-sm text-zinc-700">
                 <div className="flex items-center gap-2">
                   <Phone className="w-4 h-4 text-zinc-500 shrink-0" />
-                  <span>Hotline:</span>
+                  <span>{t("footer.hotline")}</span>
                   <a
                     href="tel:09610016778"
                     className="text-teal-700 underline underline-offset-2 hover:text-teal-800"
@@ -155,7 +177,7 @@ export default function Footer() {
                 </div>
                 <div className="flex items-center gap-2">
                   <MessageCircle className="w-4 h-4 text-zinc-500 shrink-0" />
-                  <span>Whatsapp:</span>
+                  <span>{t("footer.whatsapp")}</span>
                   <a
                     href="https://wa.me/8801810117100"
                     target="_blank"
@@ -167,9 +189,7 @@ export default function Footer() {
                 </div>
                 <div className="flex items-start gap-2">
                   <MapPin className="w-4 h-4 text-zinc-500 shrink-0 mt-0.5" />
-                  <span className="leading-snug">
-                    Address: D/15-1, Road-36, Block-D, Section-10, Mirpur, Dhaka-1216
-                  </span>
+                  <span className="leading-snug">{t("footer.address")}</span>
                 </div>
               </div>
             </div>
@@ -177,7 +197,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-10 pt-8 border-t border-[#E5E7EB] text-center text-sm text-zinc-700">
-          <p>© 2026 Kinbo Limited. All rights reserved.</p>
+          <p>{t("footer.copyright")}</p>
         </div>
       </div>
     </footer>

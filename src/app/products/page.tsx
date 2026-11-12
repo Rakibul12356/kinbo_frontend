@@ -1,8 +1,11 @@
+"use client";
+
 import ProductListing from "@/components/modules/product/ProductListing";
 import {
   DEFAULT_FILTER_SECTIONS,
   type FilterSectionConfig,
 } from "@/components/filters/filter-config";
+import { useT } from "@/hooks/use-t";
 
 const FILTER_SECTIONS: FilterSectionConfig[] = [
   {
@@ -17,13 +20,15 @@ const FILTER_SECTIONS: FilterSectionConfig[] = [
 ];
 
 export default function ProductsPage() {
+  const t = useT();
+
   return (
     <ProductListing
-      title="All Products"
-      description="Browse the full Kinbo catalog with filters for price, discount, rating and more."
+      title={t("products.title")}
+      description={t("products.subtitle")}
       breadcrumbs={[
         { label: "Home", href: "/" },
-        { label: "All Products" },
+        { label: t("products.title") },
       ]}
       filterSections={FILTER_SECTIONS}
     />

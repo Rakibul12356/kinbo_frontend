@@ -7,12 +7,14 @@ import { useCart } from "@/hooks/use-cart";
 import { useIsClient } from "@/hooks/use-is-client";
 import { Star, Rocket, Check } from "lucide-react";
 import { formatPrice, calculateDiscount } from "@/lib/utils";
+import { useT } from "@/hooks/use-t";
 
 interface ProductCardProps {
   product: Product;
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
+  const t = useT();
   const { addToCart, isInCart } = useCart();
   const isClient = useIsClient();
   const isAdded = isClient && isInCart(product.id);
@@ -137,7 +139,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             }`}
           >
             {isAdded && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
-            {isAdded ? "Added" : "Add"}
+            {isAdded ? t("products.added") : t("products.add")}
           </button>
         </div>
       </div>

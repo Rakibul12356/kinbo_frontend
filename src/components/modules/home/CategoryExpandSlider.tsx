@@ -4,27 +4,16 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { CATEGORIES, categoryListingHref } from "@/lib/categories";
-
-const SHORT_LABELS: Record<string, string> = {
-  "Fashion & Clothing": "Fashion",
-  "Electronics & Gadgets": "Electronics",
-  "Beauty & Personal Care": "Beauty",
-  "Home & Kitchen": "Home",
-  "Grocery & Food": "Grocery",
-  "Baby, Kids & Toys": "Kids & Toys",
-  "Books, Stationery & Office Supplies": "Books",
-  "Sports, Fitness & Outdoor": "Sports",
-  "Watches, Jewelry & Accessories": "Watches",
-  "Home Appliances & Furniture": "Appliances",
-};
+import { useT } from "@/hooks/use-t";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 const ITEMS = CATEGORIES.map((category) => ({
   id: category.slug,
-  label: SHORT_LABELS[category.name] ?? category.name,
   href: categoryListingHref(category.slug),
 }));
 
 export default function CategoryExpandSlider() {
+  const t = useT();
   const [active, setActive] = useState<number | null>(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(3);
@@ -74,25 +63,25 @@ export default function CategoryExpandSlider() {
       <div className="mx-auto w-full container px-4 sm:px-6">
         <div className="mb-5 flex items-center justify-between gap-3 sm:mb-6 sm:gap-4">
           <h2 className="text-xl sm:text-3xl font-extrabold tracking-tight text-[#1F2937]">
-            Shop By Category
+            {t("home.shopByCategory")}
           </h2>
 
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => goPage(page - 1)}
-              aria-label="Previous categories"
+              aria-label={t("home.prevCategories")}
               className="flex h-9 w-9 items-center justify-center rounded-full border border-[#082F6B]/25 text-[#082F6B] transition hover:bg-[#F3F7FC] cursor-pointer"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
             </button>
             <button
               type="button"
               onClick={() => goPage(page + 1)}
-              aria-label="Next categories"
+              aria-label={t("home.nextCategories")}
               className="flex h-9 w-9 items-center justify-center rounded-full border border-[#082F6B]/25 text-[#082F6B] transition hover:bg-[#F3F7FC] cursor-pointer"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4 rtl:rotate-180" />
             </button>
           </div>
         </div>
@@ -104,6 +93,7 @@ export default function CategoryExpandSlider() {
           {visible.map((item, i) => {
             const index = start + i;
             const expanded = active === index;
+            const label = t(`cat.${item.id}` as MessageKey);
 
             return (
               <Link
@@ -111,7 +101,7 @@ export default function CategoryExpandSlider() {
                 href={item.href}
                 onMouseEnter={() => onEnter(index)}
                 onFocus={() => onEnter(index)}
-                aria-label={item.label}
+                aria-label={label}
                 className={`group relative flex h-full min-w-0 flex-1 items-center justify-center overflow-hidden rounded-2xl px-2 sm:px-4 transition-all duration-500 ease-out ${
                   expanded
                     ? "flex-[3.4] bg-[#FF6B00] text-white shadow-lg shadow-[#FF6B00]/20"
@@ -125,7 +115,7 @@ export default function CategoryExpandSlider() {
                       : "[writing-mode:vertical-rl] rotate-180"
                   }`}
                 >
-                  {item.label}
+                  {label}
                 </span>
               </Link>
             );

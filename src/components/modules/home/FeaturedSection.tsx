@@ -5,12 +5,14 @@ import Link from "next/link";
 import { Sparkles, ArrowRight } from "lucide-react";
 import ProductCard from "../product/ProductCard";
 import { Product } from "@/types/ecommerce";
+import { useT } from "@/hooks/use-t";
 
 interface FeaturedSectionProps {
   products: Product[];
 }
 
 export default function FeaturedSection({ products }: FeaturedSectionProps) {
+  const t = useT();
   const featured = products.slice(0, 4);
 
   return (
@@ -20,22 +22,20 @@ export default function FeaturedSection({ products }: FeaturedSectionProps) {
           <div>
             <div className="inline-flex items-center gap-2 text-xs font-bold text-[#FF6B00] uppercase tracking-wider mb-2">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Trending Now</span>
+              <span>{t("home.trending")}</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1F2937] tracking-tight">
-              Featured Highlights
+              {t("home.featured")}
             </h2>
-            <p className="text-sm text-zinc-500 mt-1">
-              Top curated items rated 4.8+ stars by our verified community
-            </p>
+            <p className="text-sm text-zinc-500 mt-1">{t("home.featuredSub")}</p>
           </div>
 
           <Link
             href="/products"
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#082F6B] hover:text-[#FF6B00] transition"
           >
-            <span>View All Products</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>{t("home.viewAll")}</span>
+            <ArrowRight className="w-4 h-4 rtl:rotate-180" />
           </Link>
         </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import i18n, { bootstrapI18nLanguage, syncDocumentLanguage } from "@/lib/i18n/i18n";
 
 export type AppLanguage = "en" | "ar";
 
@@ -13,26 +14,19 @@ interface LanguageContextValue {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
-function applyLanguage(language: AppLanguage) {
-  document.documentElement.lang = language;
-  document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
-  window.localStorage.setItem(STORAGE_KEY, language);
-}
-
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguageState] = useState<AppLanguage>("en");
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    const next: AppLanguage = stored === "ar" ? "ar" : "en";
+    const next = bootstrapI18nLanguage();
     setLanguageState(next);
-    document.documentElement.lang = next;
-    document.documentElement.dir = next === "ar" ? "rtl" : "ltr";
   }, []);
 
   const setLanguage = (next: AppLanguage) => {
     setLanguageState(next);
-    applyLanguage(next);
+    window.localStorage.setItem(STORAGE_KEY, next);
+    void i18n.changeLanguage(next);
+    syncDocumentLanguage(next);
   };
 
   return (

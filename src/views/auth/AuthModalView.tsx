@@ -26,28 +26,31 @@ import {
   validateName,
   validatePassword,
 } from "@/lib/auth/validation";
+import { useT } from "@/hooks/use-t";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 type AuthMode = "login" | "signup";
 
-const SLIDES = [
+const SLIDES: { title: MessageKey; body: MessageKey; lottie: string }[] = [
   {
-    title: "Quick & easy ordering",
-    body: "Browse Kinbo’s catalog, add to cart, and check out in minutes — delivered across Bangladesh.",
+    title: "auth.slide1.title",
+    body: "auth.slide1.body",
     lottie: "/lottie/ordering.json",
   },
   {
-    title: "Verified authentic goods",
-    body: "Every product is sourced from verified sellers so you shop with confidence.",
+    title: "auth.slide2.title",
+    body: "auth.slide2.body",
     lottie: "/lottie/secure.json",
   },
   {
-    title: "Fast express delivery",
-    body: "Track your orders and get updates from packing to your doorstep.",
+    title: "auth.slide3.title",
+    body: "auth.slide3.body",
     lottie: "/lottie/delivery.json",
   },
 ];
 
 export default function AuthModalView({ mode }: { mode: AuthMode }) {
+  const t = useT();
   const router = useRouter();
   const { ready, admin, user } = useAuth();
   const [slide, setSlide] = useState(0);
@@ -157,7 +160,7 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
 
   const handleForgotPassword = () => {
     // shortcut: no email reset backend yet — show message only
-    toast.info("Password reset will be available once the backend is connected.");
+    toast.info(t("auth.forgotToast"));
   };
 
   const handleGoogle = () => {
@@ -205,10 +208,10 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
               <Lottie key={activeSlide.lottie} src={activeSlide.lottie} autoplay loop />
             </div>
             <h2 className="text-2xl font-extrabold tracking-tight text-[#1F2937]">
-              {activeSlide.title}
+              {t(activeSlide.title)}
             </h2>
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-zinc-500">
-              {activeSlide.body}
+              {t(activeSlide.body)}
             </p>
             <div className="mt-8 flex items-center gap-2">
               {SLIDES.map((item, i) => (
@@ -225,15 +228,15 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
             </div>
           </div>
 
-          <p className="relative text-center text-xs text-zinc-400">Curated shopping for Bangladesh</p>
+          <p className="relative text-center text-xs text-zinc-400">{t("auth.tagline")}</p>
         </aside>
 
         <div className="relative px-5 py-6 sm:px-8 sm:py-8">
           <button
             type="button"
             onClick={close}
-            className="absolute right-3 top-3 rounded-full p-2 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 cursor-pointer"
-            aria-label="Close dialog"
+            className="absolute end-3 top-3 rounded-full p-2 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 cursor-pointer"
+            aria-label={t("auth.close")}
           >
             <X className="h-5 w-5" />
           </button>
@@ -251,21 +254,19 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
           </div>
 
           <h1 id="auth-modal-title" className="text-2xl font-extrabold text-[#1F2937]">
-            {mode === "login" ? "Login" : "Sign up"}
+            {mode === "login" ? t("auth.login") : t("auth.signup")}
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            {mode === "login"
-              ? "Sign in with your email and password."
-              : "Create your Kinbo account with email and password."}
+            {mode === "login" ? t("auth.loginSubtitle") : t("auth.signupSubtitle")}
           </p>
 
           <form onSubmit={handleEmailSubmit} className="mt-5 space-y-3.5" noValidate>
             {mode === "signup" && (
               <Input
                 id="auth-name"
-                label="Full name"
+                label={t("auth.fullName")}
                 autoComplete="name"
-                placeholder="Your full name"
+                placeholder={t("auth.fullNamePh")}
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 leftIcon={<UserRound className="h-4 w-4" />}
@@ -274,10 +275,10 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
 
             <Input
               id="auth-email"
-              label="Email address"
+              label={t("auth.email")}
               type="email"
               autoComplete="email"
-              placeholder="you@example.com"
+              placeholder={t("auth.emailPh")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               leftIcon={<Mail className="h-4 w-4" />}
@@ -285,9 +286,9 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
 
             <PasswordInput
               id="auth-password"
-              label="Password"
+              label={t("auth.password")}
               autoComplete={mode === "signup" ? "new-password" : "current-password"}
-              placeholder={mode === "signup" ? "At least 8 characters" : "Enter your password"}
+              placeholder={mode === "signup" ? t("auth.passwordNewPh") : t("auth.passwordPh")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -299,7 +300,7 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
                   onClick={handleForgotPassword}
                   className="text-xs font-semibold text-[#082F6B] hover:underline cursor-pointer"
                 >
-                  Forgot password?
+                  {t("auth.forgot")}
                 </button>
               </div>
             )}
@@ -307,9 +308,9 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
             {mode === "signup" && (
               <PasswordInput
                 id="auth-confirm"
-                label="Confirm password"
+                label={t("auth.confirm")}
                 autoComplete="new-password"
-                placeholder="Re-enter password"
+                placeholder={t("auth.confirmPh")}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
               />
@@ -324,13 +325,13 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
                   className="mt-0.5 h-4 w-4 shrink-0 rounded accent-[#082F6B]"
                 />
                 <span>
-                  I agree to the{" "}
+                  {t("auth.agree")}{" "}
                   <Link href="/terms" className="font-medium text-[#082F6B] hover:underline">
-                    Terms and Conditions
+                    {t("auth.terms")}
                   </Link>
                   ,{" "}
                   <Link href="/privacy" className="font-medium text-[#082F6B] hover:underline">
-                    Privacy Policy
+                    {t("auth.privacy")}
                   </Link>
                   .
                 </span>
@@ -340,20 +341,22 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
             {mode === "login" && (
               <div className="rounded-xl border border-dashed border-[#082F6B]/25 bg-[#F3F7FC] px-3 py-2.5">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-[#082F6B]">
-                  Demo user account
+                  {t("auth.demoTitle")}
                 </p>
                 <p className="mt-1 text-xs text-zinc-600">
-                  Email: <span className="font-semibold text-[#1F2937]">{DEMO_USER.email}</span>
+                  {t("auth.demoEmail")}{" "}
+                  <span className="font-semibold text-[#1F2937]">{DEMO_USER.email}</span>
                 </p>
                 <p className="text-xs text-zinc-600">
-                  Password: <span className="font-semibold text-[#1F2937]">{DEMO_USER.password}</span>
+                  {t("auth.demoPassword")}{" "}
+                  <span className="font-semibold text-[#1F2937]">{DEMO_USER.password}</span>
                 </p>
                 <button
                   type="button"
                   onClick={fillDemoUser}
                   className="mt-1.5 text-xs font-semibold text-[#082F6B] hover:underline cursor-pointer"
                 >
-                  Fill demo credentials
+                  {t("auth.fillDemo")}
                 </button>
               </div>
             )}
@@ -365,43 +368,45 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
             )}
 
             <Button type="submit" size="lg" className="w-full" isLoading={submitting}>
-              {mode === "login" ? "Sign in" : "Create account"}
+              {mode === "login" ? t("auth.signIn") : t("auth.createAccount")}
             </Button>
           </form>
 
           <div className="my-5 flex items-center gap-3">
             <span className="h-px flex-1 bg-[#E5E7EB]" />
-            <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">or</span>
+            <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">
+              {t("auth.or")}
+            </span>
             <span className="h-px flex-1 bg-[#E5E7EB]" />
           </div>
 
           <div className="flex justify-center">
             <div className="w-full max-w-xs">
-              <GoogleSignInButton onClick={handleGoogle} label="Continue with Google" />
+              <GoogleSignInButton onClick={handleGoogle} label={t("auth.google")} />
             </div>
           </div>
 
           <p className="mt-5 text-center text-sm text-zinc-500">
             {mode === "login" ? (
               <>
-                Don&apos;t have an account?{" "}
+                {t("auth.noAccount")}{" "}
                 <button
                   type="button"
                   onClick={() => setAuthQuery("signup")}
                   className="font-semibold text-[#082F6B] hover:underline cursor-pointer"
                 >
-                  Sign up
+                  {t("auth.signup")}
                 </button>
               </>
             ) : (
               <>
-                Already have an account?{" "}
+                {t("auth.hasAccount")}{" "}
                 <button
                   type="button"
                   onClick={() => setAuthQuery("login")}
                   className="font-semibold text-[#082F6B] hover:underline cursor-pointer"
                 >
-                  Login
+                  {t("auth.login")}
                 </button>
               </>
             )}

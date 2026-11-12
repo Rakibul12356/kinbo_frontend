@@ -24,6 +24,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
+import { useT } from "@/hooks/use-t";
 
 export { DEFAULT_FILTER_SECTIONS };
 
@@ -48,11 +49,12 @@ export default function ProductListing(props: ProductListingProps) {
 }
 
 function ProductListingFallback({ title }: { title: string }) {
+  const t = useT();
   return (
     <PageLayout className="bg-[#F8FAFC]">
       <main className="flex-1 container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1F2937]">{title}</h1>
-        <p className="mt-2 text-sm text-zinc-500">Loading products…</p>
+        <p className="mt-2 text-sm text-zinc-500">{t("products.loading")}</p>
       </main>
     </PageLayout>
   );
@@ -65,6 +67,7 @@ function ProductListingContent({
   query,
   filterSections = DEFAULT_FILTER_SECTIONS,
 }: ProductListingProps) {
+  const t = useT();
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q")?.trim() ?? "";
 
@@ -145,10 +148,14 @@ function ProductListingContent({
                 {description && <p className="mt-1 text-sm text-zinc-500">{description}</p>}
                 <p className="mt-1 text-xs text-zinc-500">
                   {isLoading
-                    ? "Loading products…"
+                    ? t("products.loading")
                     : visibleProducts.length === 0
-                      ? "0 products found"
-                      : `Showing ${rangeStart}-${rangeEnd} of ${visibleProducts.length} products`}
+                      ? t("products.showing", { from: 0, to: 0, total: 0 })
+                      : t("products.showing", {
+                          from: rangeStart,
+                          to: rangeEnd,
+                          total: visibleProducts.length,
+                        })}
                 </p>
               </div>
 
@@ -159,7 +166,7 @@ function ProductListingContent({
                   className="lg:hidden inline-flex items-center gap-1.5 rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-sm font-semibold text-[#1F2937] cursor-pointer"
                 >
                   <SlidersHorizontal className="w-4 h-4" />
-                  Filters
+                  {t("products.filters")}
                 </button>
                 <div className="flex items-center gap-2">
                   <ArrowUpDown className="hidden sm:block w-4 h-4 text-zinc-500" />
@@ -169,7 +176,7 @@ function ProductListingContent({
                     aria-label="Sort products"
                     className="text-sm bg-white border border-[#E5E7EB] rounded-xl px-3 py-2 text-[#1F2937] outline-none focus:border-[#082F6B] cursor-pointer"
                   >
-                    <option value="featured">Featured</option>
+                    <option value="featured">{t("products.featured")}</option>
                     <option value="price-low">Price: Low to High</option>
                     <option value="price-high">Price: High to Low</option>
                     <option value="rating">Highest Rated</option>
