@@ -91,7 +91,7 @@ export default function AdminNotificationsView() {
                     </div>
                     <p className="mt-0.5 text-xs text-zinc-500">{n.message}</p>
                     <Link
-                      href={ADMIN_ROUTES.orders}
+                      href={ADMIN_ROUTES.orderDetail(n.orderId)}
                       onClick={(e) => e.stopPropagation()}
                       className="mt-2 inline-flex text-xs font-semibold text-[#082F6B] hover:underline"
                     >

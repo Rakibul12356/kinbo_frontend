@@ -194,7 +194,7 @@ function ProductsContent() {
                             </div>
                             <div className="min-w-0">
                               <Link
-                                href={`/products/${product.id}`}
+                                href={ADMIN_ROUTES.productDetail(product.id)}
                                 className="block truncate text-sm font-semibold text-[#1F2937] hover:text-[#082F6B]"
                               >
                                 {product.name}

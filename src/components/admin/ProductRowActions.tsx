@@ -56,10 +56,8 @@ export default function ProductRowActions({ product }: { product: Product }) {
           className="absolute right-0 top-full z-30 mt-1 w-44 overflow-hidden rounded-xl border border-[#E5E7EB] bg-white py-1 shadow-lg"
         >
           <Link
-            href={`/products/${product.id}`}
+            href={ADMIN_ROUTES.productDetail(product.id)}
             role="menuitem"
-            target="_blank"
-            rel="noreferrer"
             onClick={() => setOpen(false)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-[#1F2937] hover:bg-[#F3F7FC]"
           >

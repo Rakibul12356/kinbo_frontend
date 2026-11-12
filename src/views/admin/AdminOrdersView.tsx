@@ -7,12 +7,14 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Eye,
   Package,
 } from "lucide-react";
 import AdminShell from "@/views/admin/AdminShell";
 import RouteGuard from "@/components/auth/RouteGuard";
 import { useOrders } from "@/hooks/use-orders";
 import { updateOrderStatus, type StoreOrder } from "@/lib/orders/order-store";
+import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
 import { formatPrice } from "@/lib/utils";
 
 const PAGE_SIZE = 8;
@@ -101,13 +103,19 @@ export default function AdminOrdersView() {
                       <th className="px-4 py-3 font-semibold">Items</th>
                       <th className="px-4 py-3 font-semibold">Total</th>
                       <th className="px-4 py-3 font-semibold">Status</th>
+                      <th className="px-4 py-3 font-semibold text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E5E7EB]">
                     {pagedOrders.map((order) => (
                       <tr key={order.id} className="align-top">
                         <td className="px-4 py-3">
-                          <p className="font-mono text-xs font-bold text-[#082F6B]">{order.id}</p>
+                          <Link
+                            href={ADMIN_ROUTES.orderDetail(order.id)}
+                            className="font-mono text-xs font-bold text-[#082F6B] hover:underline"
+                          >
+                            {order.id}
+                          </Link>
                           <p className="mt-0.5 text-[11px] text-zinc-400">
                             {new Date(order.createdAt).toLocaleString()}
                           </p>
@@ -148,6 +156,15 @@ export default function AdminOrdersView() {
                               </option>
                             ))}
                           </select>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Link
+                            href={ADMIN_ROUTES.orderDetail(order.id)}
+                            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#082F6B] hover:bg-[#F3F7FC]"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            Details
+                          </Link>
                         </td>
                       </tr>
                     ))}
