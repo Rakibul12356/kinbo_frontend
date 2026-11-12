@@ -23,6 +23,7 @@ export const ADMIN_ROUTES = {
   login: "/?auth=login",
   dashboard: "/admin/dashboard",
   products: "/admin/products",
+  productNew: "/admin/products/new",
   orders: "/admin/orders",
   notifications: "/admin/notifications",
 } as const;
