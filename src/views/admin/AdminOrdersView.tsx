@@ -1,18 +1,21 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Package,
+} from "lucide-react";
 import AdminShell from "@/views/admin/AdminShell";
 import RouteGuard from "@/components/auth/RouteGuard";
 import { useOrders } from "@/hooks/use-orders";
-import {
-  markAdminNotificationRead,
-  markAllAdminNotificationsRead,
-  updateOrderStatus,
-  type StoreOrder,
-} from "@/lib/orders/order-store";
+import { updateOrderStatus, type StoreOrder } from "@/lib/orders/order-store";
 import { formatPrice } from "@/lib/utils";
-import { Bell, Package, CheckCheck } from "lucide-react";
+
+const PAGE_SIZE = 8;
 
 const STATUS_OPTIONS: StoreOrder["status"][] = [
   "pending",
@@ -41,82 +44,44 @@ function statusClass(status: StoreOrder["status"]) {
 }
 
 export default function AdminOrdersView() {
-  const { ready, orders, notifications, unreadCount } = useOrders();
+  const { ready, orders } = useOrders();
+  const [page, setPage] = useState(1);
+
+  const totalPages = Math.max(1, Math.ceil(orders.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedOrders = orders.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+  const rangeStart = orders.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(currentPage * PAGE_SIZE, orders.length);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   return (
     <RouteGuard step="admin">
-    <AdminShell
-      title="Orders"
-      description="Customer confirmations from checkout. Update status as you fulfill."
-      actions={
-        unreadCount > 0 ? (
-          <button
-            type="button"
-            onClick={() => markAllAdminNotificationsRead()}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-xs font-semibold text-[#082F6B] hover:bg-[#F3F7FC] cursor-pointer"
-          >
-            <CheckCheck className="w-4 h-4" />
-            Mark notices read
-          </button>
-        ) : undefined
-      }
-    >
-      <div className="space-y-6">
-        <section className="rounded-2xl border border-[#E5E7EB] bg-white overflow-hidden">
-          <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[#E5E7EB]">
-            <div className="flex items-center gap-2">
-              <Bell className="w-4 h-4 text-[#FF6B00]" />
-              <h2 className="text-sm font-bold text-[#1F2937]">Notifications</h2>
-              {unreadCount > 0 && (
-                <span className="rounded-full bg-[#FF6B00] px-2 py-0.5 text-[10px] font-bold text-white">
-                  {unreadCount} new
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="divide-y divide-[#E5E7EB]">
-            {!ready ? (
-              <p className="px-4 py-6 text-sm text-zinc-500">Loading…</p>
-            ) : notifications.length === 0 ? (
-              <p className="px-4 py-6 text-sm text-zinc-500">
-                No order notifications yet. New checkout confirmations will appear here.
-              </p>
-            ) : (
-              notifications.slice(0, 8).map((n) => (
-                <button
-                  key={n.id}
-                  type="button"
-                  onClick={() => markAdminNotificationRead(n.id)}
-                  className={`w-full text-left px-4 py-3 transition hover:bg-[#F8FAFC] cursor-pointer ${
-                    n.read ? "opacity-70" : "bg-[#FFF7F0]"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-[#1F2937]">{n.title}</p>
-                      <p className="text-xs text-zinc-500 mt-0.5">{n.message}</p>
-                    </div>
-                    <span className="shrink-0 text-[10px] text-zinc-400">
-                      {new Date(n.createdAt).toLocaleString()}
-                    </span>
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-[#E5E7EB] bg-white overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-[#E5E7EB]">
-            <Package className="w-4 h-4 text-[#082F6B]" />
+      <AdminShell
+        title="Orders"
+        description="Customer confirmations from checkout. Update status as you fulfill."
+      >
+        <section className="overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white">
+          <div className="flex flex-wrap items-center gap-2 border-b border-[#E5E7EB] px-4 py-3">
+            <Package className="h-4 w-4 text-[#082F6B]" />
             <h2 className="text-sm font-bold text-[#1F2937]">All orders</h2>
             <span className="text-xs text-zinc-400">({orders.length})</span>
+            {ready && orders.length > 0 && (
+              <span className="ms-auto text-xs text-zinc-500">
+                Showing {rangeStart}–{rangeEnd} of {orders.length}
+              </span>
+            )}
           </div>
 
           {!ready ? (
             <p className="px-4 py-8 text-sm text-zinc-500">Loading orders…</p>
           ) : orders.length === 0 ? (
-            <div className="px-4 py-10 text-center space-y-2">
+            <div className="space-y-2 px-4 py-10 text-center">
               <p className="text-sm font-semibold text-[#1F2937]">No orders yet</p>
               <p className="text-xs text-zinc-500">
                 When a customer confirms checkout, the order shows up here.
@@ -126,72 +91,141 @@ export default function AdminOrdersView() {
               </Link>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] text-left text-sm">
-                <thead className="bg-[#F8FAFC] text-xs uppercase tracking-wide text-zinc-500">
-                  <tr>
-                    <th className="px-4 py-3 font-semibold">Order</th>
-                    <th className="px-4 py-3 font-semibold">Customer</th>
-                    <th className="px-4 py-3 font-semibold">Items</th>
-                    <th className="px-4 py-3 font-semibold">Total</th>
-                    <th className="px-4 py-3 font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E5E7EB]">
-                  {orders.map((order) => (
-                    <tr key={order.id} className="align-top">
-                      <td className="px-4 py-3">
-                        <p className="font-bold text-[#082F6B] font-mono text-xs">{order.id}</p>
-                        <p className="text-[11px] text-zinc-400 mt-0.5">
-                          {new Date(order.createdAt).toLocaleString()}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="font-semibold text-[#1F2937]">{order.shipping.fullName}</p>
-                        <p className="text-xs text-zinc-500">{order.shipping.phone}</p>
-                        <p className="text-xs text-zinc-400">{order.shipping.city}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <ul className="space-y-1">
-                          {order.items.slice(0, 3).map((item) => (
-                            <li key={`${order.id}-${item.productId}`} className="text-xs text-zinc-600">
-                              {item.quantity}× {item.name}
-                            </li>
-                          ))}
-                          {order.items.length > 3 && (
-                            <li className="text-[11px] text-zinc-400">
-                              +{order.items.length - 3} more
-                            </li>
-                          )}
-                        </ul>
-                      </td>
-                      <td className="px-4 py-3 font-bold text-[#1F2937]">
-                        {formatPrice(order.total)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <select
-                          value={order.status}
-                          onChange={(e) =>
-                            updateOrderStatus(order.id, e.target.value as StoreOrder["status"])
-                          }
-                          className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold capitalize outline-none cursor-pointer ${statusClass(order.status)}`}
-                        >
-                          {STATUS_OPTIONS.map((status) => (
-                            <option key={status} value={status}>
-                              {status}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-180 text-left text-sm">
+                  <thead className="bg-[#F8FAFC] text-xs uppercase tracking-wide text-zinc-500">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold">Order</th>
+                      <th className="px-4 py-3 font-semibold">Customer</th>
+                      <th className="px-4 py-3 font-semibold">Items</th>
+                      <th className="px-4 py-3 font-semibold">Total</th>
+                      <th className="px-4 py-3 font-semibold">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-[#E5E7EB]">
+                    {pagedOrders.map((order) => (
+                      <tr key={order.id} className="align-top">
+                        <td className="px-4 py-3">
+                          <p className="font-mono text-xs font-bold text-[#082F6B]">{order.id}</p>
+                          <p className="mt-0.5 text-[11px] text-zinc-400">
+                            {new Date(order.createdAt).toLocaleString()}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-[#1F2937]">{order.shipping.fullName}</p>
+                          <p className="text-xs text-zinc-500">{order.shipping.phone}</p>
+                          <p className="text-xs text-zinc-400">{order.shipping.city}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <ul className="space-y-1">
+                            {order.items.slice(0, 3).map((item) => (
+                              <li key={`${order.id}-${item.productId}`} className="text-xs text-zinc-600">
+                                {item.quantity}× {item.name}
+                              </li>
+                            ))}
+                            {order.items.length > 3 && (
+                              <li className="text-[11px] text-zinc-400">
+                                +{order.items.length - 3} more
+                              </li>
+                            )}
+                          </ul>
+                        </td>
+                        <td className="px-4 py-3 font-bold text-[#1F2937]">
+                          {formatPrice(order.total)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <select
+                            value={order.status}
+                            onChange={(e) =>
+                              updateOrderStatus(order.id, e.target.value as StoreOrder["status"])
+                            }
+                            className={`cursor-pointer rounded-lg border px-2.5 py-1.5 text-xs font-semibold capitalize outline-none ${statusClass(order.status)}`}
+                          >
+                            {STATUS_OPTIONS.map((status) => (
+                              <option key={status} value={status}>
+                                {status}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {orders.length > PAGE_SIZE && (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#E5E7EB] px-4 py-3">
+                  <p className="text-xs text-zinc-500">
+                    Page {currentPage} of {totalPages}
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setPage(1)}
+                      disabled={currentPage <= 1}
+                      aria-label="First page"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#E5E7EB] bg-white text-[#082F6B] transition enabled:hover:bg-[#F3F7FC] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                    >
+                      <ChevronsLeft className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage <= 1}
+                      aria-label="Previous page"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#E5E7EB] bg-white text-[#082F6B] transition enabled:hover:bg-[#F3F7FC] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+
+                    {Array.from({ length: totalPages }).map((_, i) => {
+                      const pageNumber = i + 1;
+                      const active = pageNumber === currentPage;
+                      return (
+                        <button
+                          key={pageNumber}
+                          type="button"
+                          onClick={() => setPage(pageNumber)}
+                          aria-label={`Go to page ${pageNumber}`}
+                          aria-current={active ? "page" : undefined}
+                          className={`inline-flex h-9 min-w-9 items-center justify-center rounded-xl px-2.5 text-sm font-semibold transition cursor-pointer ${
+                            active
+                              ? "bg-[#082F6B] text-white"
+                              : "border border-[#E5E7EB] bg-white text-[#1F2937] hover:bg-[#F3F7FC]"
+                          }`}
+                        >
+                          {pageNumber}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage >= totalPages}
+                      aria-label="Next page"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#E5E7EB] bg-white text-[#082F6B] transition enabled:hover:bg-[#F3F7FC] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPage(totalPages)}
+                      disabled={currentPage >= totalPages}
+                      aria-label="Last page"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#E5E7EB] bg-white text-[#082F6B] transition enabled:hover:bg-[#F3F7FC] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                    >
+                      <ChevronsRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </section>
-      </div>
-    </AdminShell>
+      </AdminShell>
     </RouteGuard>
   );
 }

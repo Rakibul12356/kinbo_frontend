@@ -8,10 +8,11 @@ import {
   Package,
   RotateCcw,
   ShoppingBag,
-  TrendingUp,
   UserPlus,
+  Users,
 } from "lucide-react";
 import StatCard from "@/components/dashboard/StatCard";
+import GrowthChart from "@/components/dashboard/GrowthChart";
 import RouteGuard from "@/components/auth/RouteGuard";
 import { useOrders } from "@/hooks/use-orders";
 import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
@@ -24,17 +25,23 @@ function dayKey(date: Date) {
 }
 
 function lastNDays(n: number) {
-  const days: { key: string; label: string }[] = [];
+  const days: { key: string; label: string; date: Date }[] = [];
   for (let i = n - 1; i >= 0; i--) {
     const d = new Date();
     d.setHours(12, 0, 0, 0);
     d.setDate(d.getDate() - i);
     days.push({
       key: dayKey(d),
-      label: d.toLocaleDateString("en-US", { weekday: "short" }),
+      label: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      date: d,
     });
   }
   return days;
+}
+
+function pctChange(current: number, previous: number) {
+  if (previous <= 0) return current > 0 ? 100 : 0;
+  return ((current - previous) / previous) * 100;
 }
 
 function statusClass(status: StoreOrder["status"]) {
@@ -61,16 +68,55 @@ function DashboardContent() {
     const active = orders.filter((o) => o.status !== "cancelled" && o.status !== "returned");
     const returns = orders.filter((o) => o.status === "returned" || o.status === "cancelled");
     const revenue = active.reduce((sum, o) => sum + o.total, 0);
-    const customers = new Set(orders.map((o) => o.shipping.email.trim().toLowerCase()).filter(Boolean));
+    const customers = new Set(
+      orders.map((o) => o.shipping.email.trim().toLowerCase()).filter(Boolean),
+    );
 
-    const days = lastNDays(7);
-    const revenueByDay = days.map((day) => {
-      const dayRevenue = active
+    const days14 = lastNDays(14);
+    const days7 = days14.slice(-7);
+    const prev7 = days14.slice(0, 7);
+
+    const seriesFor = (days: typeof days14) =>
+      days.map((day) => {
+        const dayOrders = active.filter((o) => dayKey(new Date(o.createdAt)) === day.key);
+        const dayReturns = returns.filter((o) => dayKey(new Date(o.createdAt)) === day.key);
+        const dayCustomers = new Set(
+          orders
+            .filter((o) => dayKey(new Date(o.createdAt)) === day.key)
+            .map((o) => o.shipping.email.trim().toLowerCase())
+            .filter(Boolean),
+        );
+        return {
+          key: day.key,
+          label: day.label,
+          revenue: dayOrders.reduce((sum, o) => sum + o.total, 0),
+          sales: dayOrders.length,
+          customers: dayCustomers.size,
+          returns: dayReturns.length,
+        };
+      });
+
+    const growth14 = seriesFor(days14);
+    const thisWeek = seriesFor(days7);
+    const lastWeek = seriesFor(prev7);
+
+    const sum = (rows: typeof thisWeek, field: "revenue" | "sales" | "customers" | "returns") =>
+      rows.reduce((s, r) => s + r[field], 0);
+
+    let runningCustomers = 0;
+    const seen = new Set<string>();
+    const customerGrowth = days14.map((day) => {
+      orders
         .filter((o) => dayKey(new Date(o.createdAt)) === day.key)
-        .reduce((sum, o) => sum + o.total, 0);
-      return { ...day, revenue: dayRevenue };
+        .forEach((o) => {
+          const email = o.shipping.email.trim().toLowerCase();
+          if (email && !seen.has(email)) {
+            seen.add(email);
+            runningCustomers += 1;
+          }
+        });
+      return { key: day.key, label: day.label, value: runningCustomers };
     });
-    const maxRevenue = Math.max(...revenueByDay.map((d) => d.revenue), 1);
 
     return {
       sales: active.length,
@@ -79,23 +125,35 @@ function DashboardContent() {
       returns: returns.length,
       recent: orders.slice(0, 6),
       returnOrders: returns.slice(0, 5),
-      revenueByDay,
-      maxRevenue,
       avgOrder: active.length ? revenue / active.length : 0,
+      revenueSeries: growth14.map((d) => ({ key: d.key, label: d.label, value: d.revenue })),
+      salesSeries: growth14.map((d) => ({ key: d.key, label: d.label, value: d.sales })),
+      customerSeries: customerGrowth,
+      returnsSeries: growth14.map((d) => ({ key: d.key, label: d.label, value: d.returns })),
+      growth: {
+        revenue: pctChange(sum(thisWeek, "revenue"), sum(lastWeek, "revenue")),
+        sales: pctChange(sum(thisWeek, "sales"), sum(lastWeek, "sales")),
+        customers: pctChange(sum(thisWeek, "customers"), sum(lastWeek, "customers")),
+        returns: pctChange(sum(thisWeek, "returns"), sum(lastWeek, "returns")),
+      },
     };
   }, [orders]);
 
   return (
     <AdminShell
       title="Overview"
-      description="Sales, revenue, customers, and order activity at a glance."
+      description="Sales, revenue, customers, and growth charts at a glance."
     >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Sales"
           value={ready ? analytics.sales : "—"}
           icon={ShoppingBag}
-          hint="Orders excluding returns & cancellations"
+          hint={
+            ready
+              ? `${analytics.growth.sales >= 0 ? "+" : ""}${analytics.growth.sales.toFixed(1)}% vs last week`
+              : "Orders excluding returns"
+          }
           accent="bg-[#082F6B]/10 text-[#082F6B]"
         />
         <StatCard
@@ -103,9 +161,9 @@ function DashboardContent() {
           value={ready ? formatPrice(analytics.revenue) : "—"}
           icon={Banknote}
           hint={
-            analytics.sales
-              ? `Avg ${formatPrice(analytics.avgOrder)} per order`
-              : "From confirmed checkouts"
+            ready
+              ? `${analytics.growth.revenue >= 0 ? "+" : ""}${analytics.growth.revenue.toFixed(1)}% vs last week`
+              : "From checkouts"
           }
           accent="bg-emerald-50 text-emerald-600"
         />
@@ -113,56 +171,61 @@ function DashboardContent() {
           label="New customers"
           value={ready ? analytics.newCustomers : "—"}
           icon={UserPlus}
-          hint="Unique emails from orders"
+          hint={
+            ready
+              ? `${analytics.growth.customers >= 0 ? "+" : ""}${analytics.growth.customers.toFixed(1)}% vs last week`
+              : "Unique emails"
+          }
           accent="bg-sky-50 text-sky-600"
         />
         <StatCard
           label="Return orders"
           value={ready ? analytics.returns : "—"}
           icon={RotateCcw}
-          hint="Returned + cancelled"
+          hint={
+            ready
+              ? `${analytics.growth.returns >= 0 ? "+" : ""}${analytics.growth.returns.toFixed(1)}% vs last week`
+              : "Returned + cancelled"
+          }
           accent="bg-orange-50 text-orange-600"
         />
       </div>
 
-      <section className="mt-6 rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="flex items-center gap-2 text-base font-bold text-[#1F2937]">
-              <TrendingUp className="h-4 w-4 text-[#082F6B]" />
-              Revenue — last 7 days
-            </h2>
-            <p className="mt-0.5 text-xs text-zinc-500">Active order totals by day</p>
-          </div>
-          <Link
-            href={ADMIN_ROUTES.orders}
-            className="text-xs font-semibold text-[#082F6B] hover:underline"
-          >
-            All orders
-          </Link>
-        </div>
-
-        <div className="flex h-44 items-end gap-2 sm:gap-3">
-          {analytics.revenueByDay.map((day) => {
-            const height = Math.max(6, Math.round((day.revenue / analytics.maxRevenue) * 100));
-            return (
-              <div key={day.key} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-                <p className="text-[10px] font-semibold text-zinc-500 tabular-nums">
-                  {day.revenue > 0 ? formatPrice(day.revenue) : "—"}
-                </p>
-                <div className="flex h-28 w-full items-end justify-center rounded-lg bg-[#F3F7FC] px-1">
-                  <div
-                    className="w-full max-w-10 rounded-t-md bg-[#082F6B] transition-all"
-                    style={{ height: `${height}%` }}
-                    title={formatPrice(day.revenue)}
-                  />
-                </div>
-                <p className="text-[11px] font-medium text-zinc-500">{day.label}</p>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+        <GrowthChart
+          title="Revenue growth"
+          subtitle="Last 14 days · active order totals"
+          points={analytics.revenueSeries}
+          color="#082F6B"
+          formatValue={formatPrice}
+          growthPercent={analytics.growth.revenue}
+          growthLabel="vs previous 7 days"
+        />
+        <GrowthChart
+          title="Sales growth"
+          subtitle="Last 14 days · order count"
+          points={analytics.salesSeries}
+          color="#FF6B00"
+          growthPercent={analytics.growth.sales}
+          growthLabel="vs previous 7 days"
+        />
+        <GrowthChart
+          title="Customer growth"
+          subtitle="Last 14 days · cumulative unique customers"
+          points={analytics.customerSeries}
+          color="#0284c7"
+          growthPercent={analytics.growth.customers}
+          growthLabel="new this week vs last"
+        />
+        <GrowthChart
+          title="Returns trend"
+          subtitle="Last 14 days · returned + cancelled"
+          points={analytics.returnsSeries}
+          color="#ea580c"
+          growthPercent={analytics.growth.returns}
+          growthLabel="vs previous 7 days"
+        />
+      </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <section className="overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-xs">
@@ -263,11 +326,16 @@ function DashboardContent() {
       </div>
 
       <section className="mt-6 flex flex-col gap-3 rounded-2xl border border-[#E5E7EB] bg-[#082F6B] px-5 py-4 text-white sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-base font-bold">Keep the catalog moving</h2>
-          <p className="mt-1 text-sm text-white/75">
-            Add products or update order status from the marketplace tools.
-          </p>
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
+            <Users className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="text-base font-bold">Growth follows real checkouts</h2>
+            <p className="mt-1 text-sm text-white/75">
+              Charts update from customer orders — place a few checkouts to see the lines move.
+            </p>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link

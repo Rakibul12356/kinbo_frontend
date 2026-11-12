@@ -24,6 +24,7 @@ export const ADMIN_ROUTES = {
   dashboard: "/admin/dashboard",
   products: "/admin/products",
   orders: "/admin/orders",
+  notifications: "/admin/notifications",
 } as const;
 
 export type ActionResult<T = object> =

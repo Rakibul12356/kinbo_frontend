@@ -29,6 +29,8 @@ interface DashboardShellProps {
   onLogout: () => void;
   /** Rendered on the right of the page title row. */
   actions?: React.ReactNode;
+  notificationHref?: string;
+  unreadNotifications?: number;
   children: React.ReactNode;
 }
 
@@ -191,6 +193,8 @@ export default function DashboardShell({
   user,
   onLogout,
   actions,
+  notificationHref,
+  unreadNotifications = 0,
   children,
 }: DashboardShellProps) {
   const pathname = usePathname();
@@ -243,14 +247,28 @@ export default function DashboardShell({
             />
           </div>
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
-            <button
-              type="button"
-              className="relative rounded-xl p-2.5 text-zinc-600 hover:bg-zinc-100 cursor-pointer"
-              aria-label="Notifications"
-            >
-              <Bell className="h-5 w-5" />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#FF6B00] ring-2 ring-white" />
-            </button>
+            {notificationHref ? (
+              <Link
+                href={notificationHref}
+                className="relative rounded-xl p-2.5 text-zinc-600 hover:bg-zinc-100"
+                aria-label="Notifications"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadNotifications > 0 && (
+                  <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF6B00] px-1 text-[9px] font-bold text-white ring-2 ring-white">
+                    {unreadNotifications > 9 ? "9+" : unreadNotifications}
+                  </span>
+                )}
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className="relative rounded-xl p-2.5 text-zinc-600 hover:bg-zinc-100 cursor-pointer"
+                aria-label="Notifications"
+              >
+                <Bell className="h-5 w-5" />
+              </button>
+            )}
             <UserMenu user={user} onLogout={onLogout} />
           </div>
         </header>

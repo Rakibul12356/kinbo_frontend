@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
+  ensureDemoOrders,
   listAdminNotifications,
   listOrders,
   subscribeOrders,
@@ -15,6 +16,7 @@ export function useOrders() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    ensureDemoOrders();
     const sync = () => {
       setOrders(listOrders());
       setNotifications(listAdminNotifications());

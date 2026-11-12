@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Bell,
   LayoutDashboard,
   Package,
   Settings,
@@ -8,10 +9,18 @@ import {
 } from "lucide-react";
 import type { NavGroup } from "./DashboardShell";
 
-export function adminNav(): NavGroup[] {
+export function adminNav(unreadNotifications = 0): NavGroup[] {
   return [
     {
-      items: [{ label: "Overview", href: "/admin/dashboard", icon: LayoutDashboard }],
+      items: [
+        { label: "Overview", href: "/admin/dashboard", icon: LayoutDashboard },
+        {
+          label: "Notifications",
+          href: "/admin/notifications",
+          icon: Bell,
+          badge: unreadNotifications > 0 ? unreadNotifications : undefined,
+        },
+      ],
     },
     {
       title: "Marketplace",
