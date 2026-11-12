@@ -203,7 +203,7 @@ export default function Navbar({ onSearchChange }: NavbarProps) {
               </div>
             ) : (
               <Link
-                href="/login"
+                href="/?auth=login"
                 className="hidden items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-[#1F2937] transition hover:bg-[#F3F7FC] hover:text-[#082F6B] lg:inline-flex"
               >
                 <LogIn className="h-4 w-4 text-[#082F6B]" />
@@ -324,7 +324,7 @@ export default function Navbar({ onSearchChange }: NavbarProps) {
                   </button>
                 </>
               ) : (
-                <Link href="/login" onClick={closeMenus} className={menuItemClass}>
+                <Link href="/?auth=login" onClick={closeMenus} className={menuItemClass}>
                   <LogIn className="h-4 w-4 text-[#082F6B]" />
                   <span>Login</span>
                 </Link>

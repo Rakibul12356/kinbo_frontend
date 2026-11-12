@@ -4,6 +4,7 @@ import "./globals.css";
 import AppProvider from "@/providers/app-provider";
 import CartDrawer from "@/components/modules/cart/CartDrawer";
 import SupportChatWidget from "@/components/common/SupportChatWidget";
+import AuthModalHost from "@/components/auth/AuthModalHost";
 import StorefrontOnly from "@/components/layout/StorefrontOnly";
 
 const inter = Inter({
@@ -50,6 +51,7 @@ export default function RootLayout({
           <StorefrontOnly>
             <CartDrawer />
             <SupportChatWidget />
+            <AuthModalHost />
           </StorefrontOnly>
         </AppProvider>
       </body>
