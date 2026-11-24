@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import AdminProductDetailView from "@/views/admin/AdminProductDetailView";
 
+export const instant = false;
 export const metadata: Metadata = { title: "Product Details - Kinbo Admin" };
 
 export default function Page() {

@@ -32,6 +32,7 @@ export const ADMIN_ROUTES = {
   reports: "/admin/reports",
   settings: "/admin/settings",
   notifications: "/admin/notifications",
+  reviews: "/admin/reviews",
 } as const;
 
 export type ActionResult<T = object> =

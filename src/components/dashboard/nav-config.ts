@@ -5,6 +5,7 @@ import {
   Package,
   Settings,
   ShoppingBag,
+  Star,
   Users,
 } from "lucide-react";
 import type { NavGroup } from "./DashboardShell";
@@ -27,6 +28,7 @@ export function adminNav(unreadNotifications = 0): NavGroup[] {
       items: [
         { label: "Products", href: "/admin/products", icon: Package },
         { label: "Orders", href: "/admin/orders", icon: ShoppingBag },
+        { label: "Reviews", href: "/admin/reviews", icon: Star },
         { label: "Customers", href: "/admin/customers", icon: Users },
         { label: "Reports", href: "/admin/reports", icon: BarChart3 },
       ],

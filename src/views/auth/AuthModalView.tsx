@@ -12,7 +12,7 @@ import Input from "@/components/ui/input";
 import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 import PasswordInput from "@/components/auth/PasswordInput";
 import { useAuth } from "@/hooks/use-auth";
-import { DEMO_USER } from "@/lib/auth/demo-accounts";
+import { DEMO_ADMIN, DEMO_USER } from "@/lib/auth/demo-accounts";
 import {
   ADMIN_ROUTES,
   USER_ROUTES,
@@ -155,6 +155,12 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
   const fillDemoUser = () => {
     setEmail(DEMO_USER.email);
     setPassword(DEMO_USER.password);
+    setError(null);
+  };
+
+  const fillDemoAdmin = () => {
+    setEmail(DEMO_ADMIN.email);
+    setPassword(DEMO_ADMIN.password);
     setError(null);
   };
 
@@ -339,25 +345,47 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
             )}
 
             {mode === "login" && (
-              <div className="rounded-xl border border-dashed border-[#082F6B]/25 bg-[#F3F7FC] px-3 py-2.5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-[#082F6B]">
-                  {t("auth.demoTitle")}
-                </p>
-                <p className="mt-1 text-xs text-zinc-600">
-                  {t("auth.demoEmail")}{" "}
-                  <span className="font-semibold text-[#1F2937]">{DEMO_USER.email}</span>
-                </p>
-                <p className="text-xs text-zinc-600">
-                  {t("auth.demoPassword")}{" "}
-                  <span className="font-semibold text-[#1F2937]">{DEMO_USER.password}</span>
-                </p>
-                <button
-                  type="button"
-                  onClick={fillDemoUser}
-                  className="mt-1.5 text-xs font-semibold text-[#082F6B] hover:underline cursor-pointer"
-                >
-                  {t("auth.fillDemo")}
-                </button>
+              <div className="space-y-2">
+                <div className="rounded-xl border border-dashed border-[#082F6B]/25 bg-[#F3F7FC] px-3 py-2.5">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-[#082F6B]">
+                    {t("auth.demoTitle")}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    {t("auth.demoEmail")}{" "}
+                    <span className="font-semibold text-[#1F2937]">{DEMO_USER.email}</span>
+                  </p>
+                  <p className="text-xs text-zinc-600">
+                    {t("auth.demoPassword")}{" "}
+                    <span className="font-semibold text-[#1F2937]">{DEMO_USER.password}</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={fillDemoUser}
+                    className="mt-1.5 cursor-pointer text-xs font-semibold text-[#082F6B] hover:underline"
+                  >
+                    {t("auth.fillDemo")}
+                  </button>
+                </div>
+                <div className="rounded-xl border border-dashed border-[#FF6B00]/35 bg-[#FFF7F0] px-3 py-2.5">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-[#FF6B00]">
+                    {t("auth.demoAdminTitle")}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    {t("auth.demoEmail")}{" "}
+                    <span className="font-semibold text-[#1F2937]">{DEMO_ADMIN.email}</span>
+                  </p>
+                  <p className="text-xs text-zinc-600">
+                    {t("auth.demoPassword")}{" "}
+                    <span className="font-semibold text-[#1F2937]">{DEMO_ADMIN.password}</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={fillDemoAdmin}
+                    className="mt-1.5 cursor-pointer text-xs font-semibold text-[#FF6B00] hover:underline"
+                  >
+                    {t("auth.fillDemoAdmin")}
+                  </button>
+                </div>
               </div>
             )}
 

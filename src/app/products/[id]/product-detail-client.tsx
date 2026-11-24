@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { Product } from "@/types/ecommerce";
 import { useCart } from "@/hooks/use-cart";
 import { useIsClient } from "@/hooks/use-is-client";
+import { useReviews } from "@/hooks/use-reviews";
 import { formatPrice, calculateDiscount } from "@/lib/utils";
 import { categoryListingHref, slugify } from "@/lib/categories";
 import {
@@ -19,8 +20,14 @@ import {
 export default function ProductDetailClient({ product }: { product: Product }) {
   const { addToCart, isInCart } = useCart();
   const isClient = useIsClient();
+  const reviews = useReviews();
   const [activeIndex, setActiveIndex] = useState(0);
   const isAdded = isClient && isInCart(product.id);
+  const approvedReviews = useMemo(
+    () =>
+      reviews.filter((r) => r.productId === product.id && r.status === "approved"),
+    [reviews, product.id]
+  );
 
   const images = product.images.length > 0 ? product.images : ["/images/logo.png"];
   const activeImage = images[Math.min(activeIndex, images.length - 1)];
@@ -242,6 +249,47 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             </ul>
           </div>
         </div>
+      </section>
+
+      <section className="rounded-2xl border border-[#E5E7EB] bg-white p-4 sm:p-6">
+        <div className="mb-4 flex items-center gap-2 border-b border-[#E5E7EB] pb-3 text-[#082F6B]">
+          <Star className="h-5 w-5" />
+          <h2 className="text-base font-bold sm:text-lg">Customer reviews</h2>
+          <span className="text-xs font-semibold text-zinc-400">
+            ({approvedReviews.length})
+          </span>
+        </div>
+        {approvedReviews.length === 0 ? (
+          <p className="text-sm text-zinc-500">
+            No approved reviews yet. Reviews appear here after admin accepts them.
+          </p>
+        ) : (
+          <ul className="space-y-4">
+            {approvedReviews.map((review) => (
+              <li key={review.id} className="border-b border-[#E5E7EB] pb-4 last:border-0 last:pb-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold text-[#1F2937]">{review.userName}</p>
+                  <div className="flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`h-3.5 w-3.5 ${
+                          star <= review.rating
+                            ? "fill-amber-400 text-amber-400"
+                            : "text-zinc-200"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <p className="mt-1.5 text-sm leading-relaxed text-zinc-600">{review.comment}</p>
+                <p className="mt-1 text-[11px] text-zinc-400">
+                  {new Date(review.createdAt).toLocaleDateString()}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );

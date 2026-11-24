@@ -18,7 +18,12 @@ import {
 import { useT } from "@/hooks/use-t";
 import type { MessageKey } from "@/lib/i18n/messages";
 
-const socialLinks: { label: string; href: string; icon: LucideIcon; className: string }[] = [
+const socialLinks: {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  className: string;
+}[] = [
   {
     label: "LinkedIn",
     href: "https://linkedin.com",
@@ -35,7 +40,8 @@ const socialLinks: { label: string; href: string; icon: LucideIcon; className: s
     label: "Instagram",
     href: "https://instagram.com",
     icon: Camera,
-    className: "bg-gradient-to-tr from-[#FF543E] via-[#C837AB] to-[#FFD521] text-white hover:opacity-90",
+    className:
+      "bg-gradient-to-tr from-[#FF543E] via-[#C837AB] to-[#FFD521] text-white hover:opacity-90",
   },
   {
     label: "YouTube",
@@ -58,7 +64,10 @@ function LinkColumn({
       <ul className="space-y-3 text-sm text-zinc-700">
         {links.map((l) => (
           <li key={l.href + l.label}>
-            <Link href={l.href} className="hover:text-[#006AFF] transition-colors">
+            <Link
+              href={l.href}
+              className="hover:text-[#006AFF] transition-colors"
+            >
               {l.label}
             </Link>
           </li>
@@ -101,7 +110,11 @@ export default function Footer() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 lg:gap-8">
             <div className="space-y-5">
               <div className="h-12 flex items-center">
-                <Link href="/" className="inline-flex items-center" aria-label={t("nav.home")}>
+                <Link
+                  href="/"
+                  className="inline-flex items-center"
+                  aria-label={t("nav.home")}
+                >
                   <Image
                     src="/images/logo-trimmed.png"
                     alt="Kinbo"
@@ -113,7 +126,9 @@ export default function Footer() {
                   />
                 </Link>
               </div>
-              <p className="text-sm text-zinc-700 leading-relaxed max-w-xs">{t("footer.tagline")}</p>
+              <p className="text-sm text-zinc-700 leading-relaxed max-w-xs">
+                {t("footer.tagline")}
+              </p>
               <div className="flex flex-wrap gap-2">
                 {socialLinks.map((s) => {
                   const Icon = s.icon;
@@ -135,35 +150,57 @@ export default function Footer() {
 
             <div className="space-y-5">
               <div className="h-12 flex items-center">
-                <BadgeCheck className="w-12 h-12 text-[#006AFF]" strokeWidth={1.75} />
+                <BadgeCheck
+                  className="w-12 h-12 text-[#006AFF]"
+                  strokeWidth={1.75}
+                />
               </div>
-              <p className="text-sm text-zinc-700 leading-relaxed max-w-xs">{t("footer.authentic")}</p>
+              <p className="text-sm text-zinc-700 leading-relaxed max-w-xs">
+                {t("footer.authentic")}
+              </p>
             </div>
 
             <div className="space-y-5">
               <div className="h-12 flex items-center">
-                <Users className="w-12 h-12 text-teal-700" strokeWidth={2} fill="currentColor" />
+                <Users
+                  className="w-12 h-12 text-teal-700"
+                  strokeWidth={2}
+                  fill="currentColor"
+                />
               </div>
-              <p className="text-sm text-zinc-700 leading-relaxed max-w-xs">{t("footer.customers")}</p>
+              <p className="text-sm text-zinc-700 leading-relaxed max-w-xs">
+                {t("footer.customers")}
+              </p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
             <LinkColumn
               title={t("footer.quickLinks")}
-              links={quickLinks.map((l) => ({ label: t(l.labelKey), href: l.href }))}
+              links={quickLinks.map((l) => ({
+                label: t(l.labelKey),
+                href: l.href,
+              }))}
             />
             <LinkColumn
               title={t("footer.services")}
-              links={services.map((l) => ({ label: t(l.labelKey), href: l.href }))}
+              links={services.map((l) => ({
+                label: t(l.labelKey),
+                href: l.href,
+              }))}
             />
             <LinkColumn
               title={t("footer.usefulLinks")}
-              links={usefulLinks.map((l) => ({ label: t(l.labelKey), href: l.href }))}
+              links={usefulLinks.map((l) => ({
+                label: t(l.labelKey),
+                href: l.href,
+              }))}
             />
 
             <div>
-              <h4 className="text-xl font-medium text-[#1F2937] mb-6">{t("footer.contact")}</h4>
+              <h4 className="text-xl font-medium text-[#1F2937] mb-6">
+                {t("footer.contact")}
+              </h4>
               <div className="space-y-3 text-sm text-zinc-700">
                 <div className="flex items-center gap-2">
                   <Phone className="w-4 h-4 text-zinc-500 shrink-0" />
@@ -195,7 +232,6 @@ export default function Footer() {
             </div>
           </div>
         </div>
-
         <div className="mt-10 pt-8 border-t border-[#E5E7EB] text-center text-sm text-zinc-700">
           <p>{t("footer.copyright")}</p>
         </div>
