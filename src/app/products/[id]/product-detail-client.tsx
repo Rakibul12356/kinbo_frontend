@@ -7,7 +7,7 @@ import { useCart } from "@/hooks/use-cart";
 import { useIsClient } from "@/hooks/use-is-client";
 import { useReviews } from "@/hooks/use-reviews";
 import { formatPrice, calculateDiscount } from "@/lib/utils";
-import { categoryListingHref, slugify } from "@/lib/categories";
+import { categoryHref, categoryListingHref, slugify } from "@/lib/categories";
 import {
   Star,
   ShoppingCart,
@@ -33,7 +33,12 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const activeImage = images[Math.min(activeIndex, images.length - 1)];
   const discountPercent = calculateDiscount(product.price, product.originalPrice);
 
-  const categoryHref = categoryListingHref(slugify(product.category));
+  const categorySlug = slugify(product.category);
+  const subcategorySlug = product.subcategory ? slugify(product.subcategory) : "";
+  const categoryLink = categoryListingHref(categorySlug);
+  const subcategoryLink = subcategorySlug
+    ? categoryHref(categorySlug, subcategorySlug)
+    : null;
   const aboutPoints = [
     product.description,
     product.stock > 0 ? "In stock and ready for express delivery." : "Currently out of stock.",
@@ -58,13 +63,15 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           Products
         </Link>
         <ChevronRight className="w-3 h-3 shrink-0" />
-        <Link href={categoryHref} className="hover:text-[#082F6B] transition">
+        <Link href={categoryLink} className="hover:text-[#082F6B] transition">
           {product.category}
         </Link>
-        {product.subcategory && (
+        {product.subcategory && subcategoryLink && (
           <>
             <ChevronRight className="w-3 h-3 shrink-0" />
-            <span className="text-zinc-500">{product.subcategory}</span>
+            <Link href={subcategoryLink} className="hover:text-[#082F6B] transition">
+              {product.subcategory}
+            </Link>
           </>
         )}
         <ChevronRight className="w-3 h-3 shrink-0" />
@@ -121,13 +128,19 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               {product.name}
             </h1>
 
-            <Link
-              href={categoryHref}
-              className="inline-flex items-center gap-1 text-sm font-semibold text-[#082F6B] hover:text-[#FF6B00] transition"
-            >
-              <span>{product.category}</span>
-              <ChevronRight className="w-4 h-4" />
-            </Link>
+            <div className="inline-flex flex-wrap items-center gap-1 text-sm font-semibold text-[#082F6B]">
+              <Link href={categoryLink} className="hover:text-[#FF6B00] transition">
+                {product.category}
+              </Link>
+              {product.subcategory && subcategoryLink && (
+                <>
+                  <ChevronRight className="w-4 h-4 text-zinc-400" />
+                  <Link href={subcategoryLink} className="hover:text-[#FF6B00] transition">
+                    {product.subcategory}
+                  </Link>
+                </>
+              )}
+            </div>
 
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="font-bold text-[#1F2937]">{product.rating.toFixed(2)}/5</span>

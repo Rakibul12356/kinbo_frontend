@@ -1,6 +1,7 @@
 import {
   BarChart3,
   Bell,
+  FolderTree,
   LayoutDashboard,
   Package,
   Settings,
@@ -27,6 +28,7 @@ export function adminNav(unreadNotifications = 0): NavGroup[] {
       title: "Marketplace",
       items: [
         { label: "Products", href: "/admin/products", icon: Package },
+        { label: "Categories", href: "/admin/categories", icon: FolderTree },
         { label: "Orders", href: "/admin/orders", icon: ShoppingBag },
         { label: "Reviews", href: "/admin/reviews", icon: Star },
         { label: "Customers", href: "/admin/customers", icon: Users },

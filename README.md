@@ -2,7 +2,7 @@
 
 Multi-category ecommerce frontend for Bangladesh — storefront, checkout, and admin dashboard.
 
-**Live demo:** [https://rococo-mousse-1f01f9.netlify.app/](https://rococo-mousse-1f01f9.netlify.app/)
+**Live demo:** [https://kinbofrontend.vercel.app/](https://kinbofrontend.vercel.app//)
 
 ## Stack
 

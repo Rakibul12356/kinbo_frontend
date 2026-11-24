@@ -14,7 +14,7 @@ import {
 import RouteGuard from "@/components/auth/RouteGuard";
 import ProductRowActions from "@/components/admin/ProductRowActions";
 import { useAddedProducts, useCatalogProducts } from "@/hooks/use-catalog";
-import { CATEGORIES } from "@/lib/categories";
+import { useManagedCategories } from "@/hooks/use-categories";
 import { isAdminOwnedProduct } from "@/lib/catalog/catalog-store";
 import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
 import { formatPrice } from "@/lib/utils";
@@ -35,6 +35,7 @@ function stockLabel(stock: number) {
 function ProductsContent() {
   const products = useCatalogProducts();
   const added = useAddedProducts();
+  const categories = useManagedCategories();
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
@@ -117,8 +118,8 @@ function ProductsContent() {
               className="cursor-pointer rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none focus:border-[#082F6B] focus:ring-2 focus:ring-[#082F6B]/20"
             >
               <option value="all">All categories</option>
-              {CATEGORIES.map((cat) => (
-                <option key={cat.slug} value={cat.name}>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.name}>
                   {cat.name}
                 </option>
               ))}

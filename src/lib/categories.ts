@@ -257,5 +257,5 @@ export function categoryHref(categorySlug: string, subSlug?: string): string {
 
 /** Listing page with every product of the category (used by "see all" links). */
 export function categoryListingHref(categorySlug: string): string {
-  return categoryHref(categorySlug, ALL_PRODUCTS_SLUG);
+  return categoryHref(categorySlug);
 }

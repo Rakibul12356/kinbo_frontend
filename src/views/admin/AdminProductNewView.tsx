@@ -9,7 +9,7 @@ import { toast } from "react-toastify";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import RouteGuard from "@/components/auth/RouteGuard";
-import { CATEGORIES } from "@/lib/categories";
+import { useManagedCategories } from "@/hooks/use-categories";
 import { addCatalogProduct } from "@/lib/catalog/catalog-store";
 import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
 import AdminShell from "./AdminShell";
@@ -26,28 +26,33 @@ interface ProductForm {
   isFeatured: boolean;
 }
 
-const EMPTY_FORM: ProductForm = {
-  name: "",
-  description: "",
-  price: "",
-  originalPrice: "",
-  category: CATEGORIES[0]?.name ?? "",
-  subcategory: "",
-  stock: "10",
-  imageUrl: "",
-  isFeatured: false,
-};
-
 function AddProductContent() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<ProductForm>(EMPTY_FORM);
+  const categories = useManagedCategories();
+  const [form, setForm] = useState<ProductForm>({
+    name: "",
+    description: "",
+    price: "",
+    originalPrice: "",
+    category: "",
+    subcategory: "",
+    stock: "10",
+    imageUrl: "",
+    isFeatured: false,
+  });
   const [errors, setErrors] = useState<Partial<Record<keyof ProductForm, string>>>({});
   const [saving, setSaving] = useState(false);
 
+  React.useEffect(() => {
+    if (!form.category && categories[0]) {
+      setForm((current) => ({ ...current, category: categories[0].name }));
+    }
+  }, [categories, form.category]);
+
   const subcategories = useMemo(
-    () => CATEGORIES.find((category) => category.name === form.category)?.subcategories ?? [],
-    [form.category]
+    () => categories.find((category) => category.name === form.category)?.subcategories ?? [],
+    [categories, form.category]
   );
 
   const setField = <K extends keyof ProductForm>(key: K, value: ProductForm[K]) => {
@@ -182,8 +187,8 @@ function AddProductContent() {
                 }}
                 className="w-full cursor-pointer rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5 text-sm text-[#1F2937] focus:border-[#082F6B] focus:outline-none focus:ring-2 focus:ring-[#082F6B]/20"
               >
-                {CATEGORIES.map((category) => (
-                  <option key={category.slug} value={category.name}>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.name}>
                     {category.name}
                   </option>
                 ))}
@@ -202,7 +207,7 @@ function AddProductContent() {
               >
                 <option value="">None</option>
                 {subcategories.map((subcategory) => (
-                  <option key={subcategory.slug} value={subcategory.name}>
+                  <option key={subcategory.id} value={subcategory.name}>
                     {subcategory.name}
                   </option>
                 ))}

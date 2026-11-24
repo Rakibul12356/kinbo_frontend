@@ -6,7 +6,6 @@ import {
   ALL_PRODUCTS_SLUG,
   CATEGORIES,
   categoryHref,
-  categoryListingHref,
   getCategoryBySlug,
   getSubcategory,
 } from "@/lib/categories";
@@ -49,7 +48,11 @@ export default async function SubcategoryPage({ params }: PageProps) {
       type: "links",
       title: category.name,
       links: [
-        { label: `All ${category.name}`, href: categoryListingHref(category.slug), active: isAll },
+        {
+          label: `All ${category.name}`,
+          href: categoryHref(category.slug),
+          active: isAll,
+        },
         ...category.subcategories.map((sub) => ({
           label: sub.name,
           href: categoryHref(category.slug, sub.slug),
@@ -76,11 +79,15 @@ export default async function SubcategoryPage({ params }: PageProps) {
 
   return (
     <ProductListing
-      title={subcategory?.name ?? `All ${category.name}`}
-      breadcrumbs={[
-        { label: category.name, href: categoryHref(category.slug) },
-        { label: subcategory?.name ?? "All Products" },
-      ]}
+      title={subcategory?.name ?? category.name}
+      breadcrumbs={
+        isAll
+          ? [{ label: category.name }]
+          : [
+              { label: category.name, href: categoryHref(category.slug) },
+              { label: subcategory!.name },
+            ]
+      }
       query={{ category: category.name, subcategory: subcategory?.name }}
       filterSections={filterSections}
     />
