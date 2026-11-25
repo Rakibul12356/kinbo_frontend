@@ -7,21 +7,14 @@ import LanguageSwitcher from "@/components/common/LanguageSwitcher";
 import {
   User,
   Camera,
-  Wallet,
-  Megaphone,
   Package,
   Bell,
   Heart,
-  FileText,
-  PackagePlus,
   MapPin,
-  Star,
-  Bike,
   ChevronRight,
   ChevronDown,
   Calendar,
   CheckCircle2,
-  Check,
 } from "lucide-react";
 
 export default function AccountPage() {
@@ -35,22 +28,10 @@ export default function AccountPage() {
   const [activeTab, setActiveTab] = useState("profile");
 
   const sidebarMenuItems = [
-    {
-      id: "balance",
-      label: "Balance",
-      icon: Wallet,
-      extra: "৳ 0",
-      extraClass: "text-[#082F6B] font-bold text-xs",
-    },
-    { id: "refer", label: "Refer and Earn", icon: Megaphone },
     { id: "products", label: "My Products", icon: Package },
     { id: "notified", label: "Notified Products", icon: Bell },
     { id: "wishlists", label: "Wishlists", icon: Heart },
-    { id: "prescriptions", label: "Prescriptions", icon: FileText },
-    { id: "suggest", label: "Suggest Products", icon: PackagePlus },
     { id: "address", label: "Delivery Address", icon: MapPin },
-    { id: "product-review", label: "Product Review", icon: Star },
-    { id: "rider-review", label: "Rider Review", icon: Bike },
   ];
 
   const handleUpdateProfile = (e: React.FormEvent) => {
