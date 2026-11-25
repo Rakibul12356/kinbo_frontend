@@ -1,6 +1,7 @@
 import {
   BarChart3,
   Bell,
+  Briefcase,
   FolderTree,
   LayoutDashboard,
   Package,
@@ -37,7 +38,10 @@ export function adminNav(unreadNotifications = 0): NavGroup[] {
     },
     {
       title: "System",
-      items: [{ label: "Settings", href: "/admin/settings", icon: Settings }],
+      items: [
+        { label: "Careers", href: "/admin/careers", icon: Briefcase },
+        { label: "Settings", href: "/admin/settings", icon: Settings },
+      ],
     },
   ];
 }

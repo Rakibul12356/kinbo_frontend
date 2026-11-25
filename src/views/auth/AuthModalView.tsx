@@ -165,8 +165,7 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
   };
 
   const handleForgotPassword = () => {
-    // shortcut: no email reset backend yet — show message only
-    toast.info(t("auth.forgotToast"));
+    router.push("/forgot-password");
   };
 
   const handleGoogle = () => {
