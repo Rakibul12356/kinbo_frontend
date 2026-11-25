@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { Mail, UserRound } from "lucide-react";
 import Input from "@/components/ui/input";
 import Button from "@/components/ui/button";
@@ -94,13 +95,12 @@ export default function LoginForm({
             <input type="checkbox" className="h-4 w-4 rounded accent-[#082F6B]" defaultChecked />
             Remember me
           </label>
-          <button
-            type="button"
-            className="font-semibold text-[#082F6B] hover:underline cursor-pointer"
-            onClick={() => setErrors({ form: "Password reset will be available once the backend is connected." })}
+          <Link
+            href="/forgot-password"
+            className="font-semibold text-[#082F6B] hover:underline"
           >
             Forgot password?
-          </button>
+          </Link>
         </div>
         <Button type="submit" size="lg" className="w-full" isLoading={isSubmitting}>
           {submitLabel}

@@ -34,7 +34,64 @@ export const ADMIN_ROUTES = {
   settings: "/admin/settings",
   notifications: "/admin/notifications",
   reviews: "/admin/reviews",
+  careers: "/admin/careers",
 } as const;
+
+const RESET_TOKENS_KEY = "kinbo_password_reset_tokens";
+const PASSWORD_OVERRIDES_KEY = "kinbo_password_overrides";
+
+type ResetTokenRecord = {
+  email: string;
+  token: string;
+  expiresAt: number;
+};
+
+function loadResetTokens(): ResetTokenRecord[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(RESET_TOKENS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as ResetTokenRecord[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveResetTokens(tokens: ResetTokenRecord[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(RESET_TOKENS_KEY, JSON.stringify(tokens));
+  } catch {
+    // ignore
+  }
+}
+
+function loadPasswordOverrides(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(PASSWORD_OVERRIDES_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function savePasswordOverrides(map: Record<string, string>) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(PASSWORD_OVERRIDES_KEY, JSON.stringify(map));
+  } catch {
+    // ignore
+  }
+}
+
+function effectivePassword(account: AdminAccount): string {
+  const overrides = loadPasswordOverrides();
+  return overrides[account.email] ?? account.password;
+}
 
 export type ActionResult<T = object> =
   | ({ ok: true } & T)
@@ -136,12 +193,12 @@ export function subscribeAuth(listener: () => void) {
 
 export function loginUser(email: string, password: string): ActionResult {
   const normalized = email.trim().toLowerCase();
-  if (normalized === DEMO_USER.email && password === DEMO_USER.password) {
+  if (normalized === DEMO_USER.email && password === effectivePassword(DEMO_USER)) {
     update({ session: { role: "user", userId: DEMO_USER.id } });
     return { ok: true };
   }
   const match = loadRegisteredUsers().find(
-    (u) => u.email === normalized && u.password === password,
+    (u) => u.email === normalized && effectivePassword(u) === password,
   );
   if (!match) return { ok: false, error: "Invalid email or password." };
   update({ session: { role: "user", userId: match.id } });
@@ -149,7 +206,8 @@ export function loginUser(email: string, password: string): ActionResult {
 }
 
 export function loginAdmin(email: string, password: string): ActionResult {
-  if (email.trim().toLowerCase() !== DEMO_ADMIN.email || password !== DEMO_ADMIN.password) {
+  const normalized = email.trim().toLowerCase();
+  if (normalized !== DEMO_ADMIN.email || password !== effectivePassword(DEMO_ADMIN)) {
     return { ok: false, error: "Invalid admin credentials." };
   }
   update({ session: { role: "admin", userId: DEMO_ADMIN.id } });
@@ -224,4 +282,66 @@ export function logout() {
 
 export function resetDemoData() {
   setState(freshState());
+}
+
+/**
+ * Mock forgot-password: creates a reset token (no real email).
+ * shortcut: show token on success UI until Nodemailer backend exists
+ */
+export function requestPasswordReset(
+  email: string
+): ActionResult<{ token: string; resetPath: string }> {
+  const normalized = email.trim().toLowerCase();
+  const known =
+    normalized === DEMO_USER.email ||
+    normalized === DEMO_ADMIN.email ||
+    loadRegisteredUsers().some((u) => u.email === normalized);
+
+  if (!known) {
+    // Same response shape as success to avoid email enumeration in real apps;
+    // for this demo we still tell the user if unknown so testing is easier.
+    return { ok: false, error: "No account found with that email." };
+  }
+
+  const token = `rst-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  const expiresAt = Date.now() + 1000 * 60 * 30; // 30 minutes
+  const tokens = loadResetTokens().filter((t) => t.email !== normalized && t.expiresAt > Date.now());
+  tokens.push({ email: normalized, token, expiresAt });
+  saveResetTokens(tokens);
+
+  return {
+    ok: true,
+    token,
+    resetPath: `/reset-password?token=${encodeURIComponent(token)}`,
+  };
+}
+
+export function findResetToken(token: string): ResetTokenRecord | null {
+  const match = loadResetTokens().find((t) => t.token === token);
+  if (!match) return null;
+  if (match.expiresAt < Date.now()) return null;
+  return match;
+}
+
+export function resetPasswordWithToken(token: string, password: string): ActionResult {
+  const record = findResetToken(token);
+  if (!record) return { ok: false, error: "This reset link is invalid or has expired." };
+
+  const users = loadRegisteredUsers();
+  const userIndex = users.findIndex((u) => u.email === record.email);
+
+  if (userIndex >= 0) {
+    const next = [...users];
+    next[userIndex] = { ...next[userIndex], password };
+    saveRegisteredUsers(next);
+  } else if (record.email === DEMO_USER.email || record.email === DEMO_ADMIN.email) {
+    const overrides = loadPasswordOverrides();
+    overrides[record.email] = password;
+    savePasswordOverrides(overrides);
+  } else {
+    return { ok: false, error: "Account no longer exists." };
+  }
+
+  saveResetTokens(loadResetTokens().filter((t) => t.token !== token));
+  return { ok: true };
 }

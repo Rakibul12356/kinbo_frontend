@@ -54,6 +54,16 @@ export default function ContactPage() {
     setEmail((current) => current || user.email);
   }, [user]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const subjectParam = params.get("subject");
+    if (subjectParam) {
+      setSubject(subjectParam);
+      setType("support");
+    }
+  }, []);
+
   const myTickets = useMemo(() => {
     if (user) {
       return tickets.filter(
