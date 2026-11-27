@@ -14,7 +14,7 @@ const ITEMS = CATEGORIES.map((category) => ({
 
 export default function CategoryExpandSlider() {
   const t = useT();
-  const [active, setActive] = useState<number | null>(null);
+  const [activeState, setActiveState] = useState<{ index: number; page: number } | null>(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(3);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -28,16 +28,10 @@ export default function CategoryExpandSlider() {
   }, []);
 
   const pageCount = Math.max(1, Math.ceil(ITEMS.length / pageSize));
-  const start = page * pageSize;
+  const currentPage = Math.min(page, Math.max(0, pageCount - 1));
+  const active = activeState && activeState.page === currentPage ? activeState.index : null;
+  const start = currentPage * pageSize;
   const visible = ITEMS.slice(start, start + pageSize);
-
-  useEffect(() => {
-    setActive(null);
-  }, [page]);
-
-  useEffect(() => {
-    setPage((p) => Math.min(p, Math.max(0, pageCount - 1)));
-  }, [pageCount]);
 
   useEffect(() => {
     return () => {
@@ -47,15 +41,16 @@ export default function CategoryExpandSlider() {
 
   const goPage = (next: number) => {
     setPage(((next % pageCount) + pageCount) % pageCount);
+    setActiveState(null);
   };
 
   const onEnter = (index: number) => {
     if (leaveTimer.current) clearTimeout(leaveTimer.current);
-    setActive(index);
+    setActiveState({ index, page: currentPage });
   };
 
   const onLeave = () => {
-    leaveTimer.current = setTimeout(() => setActive(null), 180);
+    leaveTimer.current = setTimeout(() => setActiveState(null), 180);
   };
 
   return (
@@ -127,11 +122,14 @@ export default function CategoryExpandSlider() {
             <button
               key={i}
               type="button"
-              onClick={() => setPage(i)}
+              onClick={() => {
+                setPage(i);
+                setActiveState(null);
+              }}
               aria-label={`Category page ${i + 1}`}
-              aria-current={i === page}
+              aria-current={i === currentPage}
               className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
-                i === page ? "w-7 bg-[#FF6B00]" : "w-2 bg-zinc-300 hover:bg-zinc-400"
+                i === currentPage ? "w-7 bg-[#FF6B00]" : "w-2 bg-zinc-300 hover:bg-zinc-400"
               }`}
             />
           ))}

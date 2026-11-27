@@ -1,12 +1,11 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import {
-  getServerJobs,
-  listJobs,
-  subscribeCareers,
-} from "@/lib/careers/careers-store";
+import { useQuery } from "@tanstack/react-query";
+import { careersService } from "@/services/careers.service";
 
 export function useJobs() {
-  return useSyncExternalStore(subscribeCareers, listJobs, getServerJobs);
+  return useQuery({
+    queryKey: ["careers", "jobs"],
+    queryFn: () => careersService.getJobs(),
+  });
 }

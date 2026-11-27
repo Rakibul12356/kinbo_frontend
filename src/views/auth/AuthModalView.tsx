@@ -1,30 +1,27 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { Mail, UserRound, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Mail, Phone, UserRound, X } from "lucide-react";
 import { Lottie } from "lottie-react";
 import { toast } from "react-toastify";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
-import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 import PasswordInput from "@/components/auth/PasswordInput";
 import { useAuth } from "@/hooks/use-auth";
-import { DEMO_ADMIN, DEMO_USER } from "@/lib/auth/demo-accounts";
 import {
   ADMIN_ROUTES,
   USER_ROUTES,
-  loginAdmin,
-  loginUser,
-  loginWithGoogle,
-  registerUser,
+  loginAccount,
+  registerAccount,
 } from "@/lib/auth/auth-store";
 import {
   validateEmail,
   validateName,
   validatePassword,
+  validatePhone,
 } from "@/lib/auth/validation";
 import { useT } from "@/hooks/use-t";
 import type { MessageKey } from "@/lib/i18n/messages";
@@ -52,15 +49,24 @@ const SLIDES: { title: MessageKey; body: MessageKey; lottie: string }[] = [
 export default function AuthModalView({ mode }: { mode: AuthMode }) {
   const t = useT();
   const router = useRouter();
+  const pathname = usePathname() || "/";
   const { ready, admin, user } = useAuth();
   const [slide, setSlide] = useState(0);
   const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [agreed, setAgreed] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const close = useCallback(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.delete("auth");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, router]);
 
   useEffect(() => {
     if (!ready) return;
@@ -72,14 +78,14 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") router.replace("/");
+      if (e.key === "Escape") close();
     };
     document.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prev;
       document.removeEventListener("keydown", onKey);
     };
-  }, [router]);
+  }, [close]);
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -88,18 +94,18 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
     return () => window.clearInterval(id);
   }, []);
 
-  const close = () => router.replace("/");
-
   const setAuthQuery = (next: "login" | "signup") => {
     setError(null);
-    router.replace(`/?auth=${next}`, { scroll: false });
+    const params = new URLSearchParams(window.location.search);
+    params.set("auth", next);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   if (!ready || admin || user) return null;
 
   const activeSlide = SLIDES[slide];
 
-  const handleEmailSubmit = (e: React.FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -110,21 +116,27 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
         return;
       }
       const nameErr = validateName(fullName);
+      const phoneErr = validatePhone(phone);
       const passErr = validatePassword(password);
-      const confirmErr = confirm === password ? undefined : "Passwords do not match.";
-      if (nameErr || emailErr || passErr || confirmErr) {
-        setError(nameErr || emailErr || passErr || confirmErr || null);
+      const confirmErr =
+        confirm === password ? undefined : "Passwords do not match.";
+      if (nameErr || emailErr || phoneErr || passErr || confirmErr) {
+        setError(
+          nameErr || emailErr || phoneErr || passErr || confirmErr || null
+        );
         return;
       }
       setSubmitting(true);
-      const result = registerUser(fullName, email, password);
+      const result = await registerAccount(fullName, email, password, phone);
       if (!result.ok) {
         setError(result.error);
         setSubmitting(false);
         return;
       }
       toast.success("Account created.");
-      router.push(USER_ROUTES.account);
+      router.push(
+        result.user.role === "ADMIN" ? ADMIN_ROUTES.dashboard : USER_ROUTES.account
+      );
       return;
     }
 
@@ -133,49 +145,20 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
       setError(emailErr || passErr || null);
       return;
     }
+
     setSubmitting(true);
-
-    const asAdmin = loginAdmin(email, password);
-    if (asAdmin.ok) {
-      toast.success("Signed in as admin.");
-      router.push(ADMIN_ROUTES.dashboard);
-      return;
-    }
-
-    const result = loginUser(email, password);
+    const result = await loginAccount(email, password);
     if (!result.ok) {
       setError(result.error);
       setSubmitting(false);
       return;
     }
-    toast.success("Welcome back.");
-    router.push(USER_ROUTES.account);
-  };
 
-  const fillDemoUser = () => {
-    setEmail(DEMO_USER.email);
-    setPassword(DEMO_USER.password);
-    setError(null);
-  };
-
-  const fillDemoAdmin = () => {
-    setEmail(DEMO_ADMIN.email);
-    setPassword(DEMO_ADMIN.password);
-    setError(null);
-  };
-
-  const handleForgotPassword = () => {
-    router.push("/forgot-password");
-  };
-
-  const handleGoogle = () => {
-    if (mode === "signup" && !agreed) {
-      setError("Please agree to the terms to continue.");
-      return;
-    }
-    const result = loginWithGoogle();
-    if (result.ok) {
-      toast.success("Signed in with Google.");
+    if (result.user.role === "ADMIN") {
+      toast.success("Signed in as admin.");
+      router.push(ADMIN_ROUTES.dashboard);
+    } else {
+      toast.success("Welcome back.");
       router.push(USER_ROUTES.account);
     }
   };
@@ -267,15 +250,27 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
 
           <form onSubmit={handleEmailSubmit} className="mt-5 space-y-3.5" noValidate>
             {mode === "signup" && (
-              <Input
-                id="auth-name"
-                label={t("auth.fullName")}
-                autoComplete="name"
-                placeholder={t("auth.fullNamePh")}
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                leftIcon={<UserRound className="h-4 w-4" />}
-              />
+              <>
+                <Input
+                  id="auth-name"
+                  label={t("auth.fullName")}
+                  autoComplete="name"
+                  placeholder={t("auth.fullNamePh")}
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  leftIcon={<UserRound className="h-4 w-4" />}
+                />
+                <Input
+                  id="auth-phone"
+                  label="Phone Number"
+                  type="tel"
+                  autoComplete="tel"
+                  placeholder="+88017XXXXXXXX"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  leftIcon={<Phone className="h-4 w-4" />}
+                />
+              </>
             )}
 
             <Input
@@ -297,18 +292,6 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-
-            {mode === "login" && (
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleForgotPassword}
-                  className="text-xs font-semibold text-[#082F6B] hover:underline cursor-pointer"
-                >
-                  {t("auth.forgot")}
-                </button>
-              </div>
-            )}
 
             {mode === "signup" && (
               <PasswordInput
@@ -343,53 +326,11 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
               </label>
             )}
 
-            {mode === "login" && (
-              <div className="space-y-2">
-                <div className="rounded-xl border border-dashed border-[#082F6B]/25 bg-[#F3F7FC] px-3 py-2.5">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-[#082F6B]">
-                    {t("auth.demoTitle")}
-                  </p>
-                  <p className="mt-1 text-xs text-zinc-600">
-                    {t("auth.demoEmail")}{" "}
-                    <span className="font-semibold text-[#1F2937]">{DEMO_USER.email}</span>
-                  </p>
-                  <p className="text-xs text-zinc-600">
-                    {t("auth.demoPassword")}{" "}
-                    <span className="font-semibold text-[#1F2937]">{DEMO_USER.password}</span>
-                  </p>
-                  <button
-                    type="button"
-                    onClick={fillDemoUser}
-                    className="mt-1.5 cursor-pointer text-xs font-semibold text-[#082F6B] hover:underline"
-                  >
-                    {t("auth.fillDemo")}
-                  </button>
-                </div>
-                <div className="rounded-xl border border-dashed border-[#FF6B00]/35 bg-[#FFF7F0] px-3 py-2.5">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-[#FF6B00]">
-                    {t("auth.demoAdminTitle")}
-                  </p>
-                  <p className="mt-1 text-xs text-zinc-600">
-                    {t("auth.demoEmail")}{" "}
-                    <span className="font-semibold text-[#1F2937]">{DEMO_ADMIN.email}</span>
-                  </p>
-                  <p className="text-xs text-zinc-600">
-                    {t("auth.demoPassword")}{" "}
-                    <span className="font-semibold text-[#1F2937]">{DEMO_ADMIN.password}</span>
-                  </p>
-                  <button
-                    type="button"
-                    onClick={fillDemoAdmin}
-                    className="mt-1.5 cursor-pointer text-xs font-semibold text-[#FF6B00] hover:underline"
-                  >
-                    {t("auth.fillDemoAdmin")}
-                  </button>
-                </div>
-              </div>
-            )}
-
             {error && (
-              <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              <p
+                role="alert"
+                className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+              >
                 {error}
               </p>
             )}
@@ -398,20 +339,6 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
               {mode === "login" ? t("auth.signIn") : t("auth.createAccount")}
             </Button>
           </form>
-
-          <div className="my-5 flex items-center gap-3">
-            <span className="h-px flex-1 bg-[#E5E7EB]" />
-            <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">
-              {t("auth.or")}
-            </span>
-            <span className="h-px flex-1 bg-[#E5E7EB]" />
-          </div>
-
-          <div className="flex justify-center">
-            <div className="w-full max-w-xs">
-              <GoogleSignInButton onClick={handleGoogle} label={t("auth.google")} />
-            </div>
-          </div>
 
           <p className="mt-5 text-center text-sm text-zinc-500">
             {mode === "login" ? (

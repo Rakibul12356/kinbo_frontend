@@ -20,8 +20,8 @@ export default function ProductCatalog({
   const activeCategory = onSelectCategory ? selectedCategory : internalCategory;
   const setActiveCategory = onSelectCategory || setInternalCategory;
 
-  const { data: categories = ["All", "Electronics", "Accessories", "Footwear", "Lifestyle"] } =
-    useCategories();
+  const { data: categoryItems = [] } = useCategories();
+  const categories = ["All", ...categoryItems.map((c) => c.name)];
 
   const {
     data: products,

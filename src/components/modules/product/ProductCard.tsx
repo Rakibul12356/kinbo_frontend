@@ -2,10 +2,16 @@
 
 import React from "react";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-toastify";
 import { Product } from "@/types/ecommerce";
 import { useCart } from "@/hooks/use-cart";
+import { useAuth } from "@/hooks/use-auth";
+import { useWishlist, ACCOUNT_QUERY_KEYS } from "@/hooks/use-account";
 import { useIsClient } from "@/hooks/use-is-client";
-import { Star, Rocket, Check } from "lucide-react";
+import { accountService } from "@/services/account.service";
+import { extractApiError } from "@/lib/axios";
+import { Star, Rocket, Check, Heart } from "lucide-react";
 import { formatPrice, calculateDiscount } from "@/lib/utils";
 import { useT } from "@/hooks/use-t";
 
@@ -15,10 +21,15 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const t = useT();
+  const queryClient = useQueryClient();
   const { addToCart, isInCart } = useCart();
+  const { user } = useAuth();
+  const { data: wishlist = [] } = useWishlist();
   const isClient = useIsClient();
   const isAdded = isClient && isInCart(product.id);
-  const detailsHref = `/products/${product.id}`;
+  const isWishlisted = wishlist.some((w) => w.productId === product.id);
+  const detailsHref = `/products/${product.slug || product.id}`;
+  const outOfStock = product.stock <= 0 || Boolean(product.isOutOfStockManual);
 
   const discountPercent = calculateDiscount(product.price, product.originalPrice);
 
@@ -27,6 +38,27 @@ export default function ProductCard({ product }: ProductCardProps) {
     (!product.discountType &&
       product.id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) % 2 === 1);
 
+  const handleToggleWishlist = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) {
+      toast.info("Please sign in to save items to your wishlist.");
+      return;
+    }
+    try {
+      if (isWishlisted) {
+        const msg = await accountService.removeFromWishlist(product.id);
+        toast.success(msg);
+      } else {
+        const msg = await accountService.addToWishlist(product.id);
+        toast.success(msg);
+      }
+      await queryClient.invalidateQueries({ queryKey: ACCOUNT_QUERY_KEYS.wishlist });
+    } catch (error) {
+      toast.error(extractApiError(error, "Could not update wishlist."));
+    }
+  };
+
   return (
     <div className="group relative flex flex-col justify-between rounded-2xl border border-[#E2E8F0] bg-white p-3.5 sm:p-4 shadow-2xs hover:shadow-lg transition-all duration-300">
       <Link
@@ -34,6 +66,19 @@ export default function ProductCard({ product }: ProductCardProps) {
         className="absolute inset-0 z-10 rounded-2xl"
         aria-label={`View ${product.name}`}
       />
+
+      <button
+        type="button"
+        onClick={handleToggleWishlist}
+        aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+        className={`absolute top-3 right-3 z-20 flex h-8 w-8 items-center justify-center rounded-full border transition cursor-pointer ${
+          isWishlisted
+            ? "border-rose-200 bg-rose-50 text-rose-500"
+            : "border-[#E5E7EB] bg-white/90 text-zinc-400 hover:text-rose-500"
+        }`}
+      >
+        <Heart className={`h-4 w-4 ${isWishlisted ? "fill-rose-500" : ""}`} />
+      </button>
 
       {discountPercent > 0 && (
         <>
@@ -72,7 +117,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
       <div className="relative aspect-square w-full bg-white flex items-center justify-center p-2 overflow-hidden mb-3 pointer-events-none">
         <img
-          src={product.images[0]}
+          src={product.images[0] || "/images/logo.png"}
           alt={product.name}
           className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-300"
         />
@@ -85,7 +130,7 @@ export default function ProductCard({ product }: ProductCardProps) {
               <div className="w-4 h-4 rounded-full bg-[#1E293B] flex items-center justify-center text-amber-400 flex-shrink-0">
                 <Rocket className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
               </div>
-              <span>{product.deliveryTime || "12-24 HOURS"}</span>
+              <span>{outOfStock ? "OUT OF STOCK" : product.deliveryTime || "12-24 HOURS"}</span>
             </div>
           </div>
 
@@ -126,20 +171,21 @@ export default function ProductCard({ product }: ProductCardProps) {
 
           <button
             type="button"
+            disabled={outOfStock}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               addToCart(product, 1);
             }}
             aria-label={isAdded ? `${product.name} added — add one more` : `Add ${product.name} to cart`}
-            className={`relative z-20 pointer-events-auto inline-flex items-center gap-1 px-3.5 py-1.5 rounded-lg border-2 border-[#082F6B] font-bold text-xs sm:text-sm tracking-wider uppercase transition active:scale-95 cursor-pointer shadow-2xs ${
+            className={`relative z-20 pointer-events-auto inline-flex items-center gap-1 px-3.5 py-1.5 rounded-lg border-2 border-[#082F6B] font-bold text-xs sm:text-sm tracking-wider uppercase transition active:scale-95 cursor-pointer shadow-2xs disabled:opacity-45 disabled:cursor-not-allowed ${
               isAdded
                 ? "bg-[#082F6B] text-white hover:bg-[#062452]"
                 : "text-[#082F6B] hover:bg-[#082F6B]/10"
             }`}
           >
             {isAdded && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
-            {isAdded ? t("products.added") : t("products.add")}
+            {outOfStock ? "SOLD OUT" : isAdded ? t("products.added") : t("products.add")}
           </button>
         </div>
       </div>

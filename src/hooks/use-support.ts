@@ -1,16 +1,14 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import {
-  getServerSupportTickets,
-  listSupportTickets,
-  subscribeSupport,
-} from "@/lib/support/support-store";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
+import { supportService } from "@/services/support.service";
 
-export function useSupportTickets() {
-  return useSyncExternalStore(
-    subscribeSupport,
-    listSupportTickets,
-    getServerSupportTickets
-  );
+export function useAdminSupportTickets() {
+  const { ready, admin } = useAuth();
+  return useQuery({
+    queryKey: ["support", "admin"],
+    queryFn: () => supportService.getAdminTickets(),
+    enabled: ready && Boolean(admin),
+  });
 }
