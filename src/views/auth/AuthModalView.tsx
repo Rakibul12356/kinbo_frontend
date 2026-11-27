@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Mail, Phone, UserRound, X } from "lucide-react";
 import { Lottie } from "lottie-react";
 import { toast } from "react-toastify";
@@ -49,7 +49,6 @@ const SLIDES: { title: MessageKey; body: MessageKey; lottie: string }[] = [
 export default function AuthModalView({ mode }: { mode: AuthMode }) {
   const t = useT();
   const router = useRouter();
-  const pathname = usePathname() || "/";
   const { ready, admin, user } = useAuth();
   const [slide, setSlide] = useState(0);
   const [fullName, setFullName] = useState("");
@@ -62,11 +61,12 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
   const [submitting, setSubmitting] = useState(false);
 
   const close = useCallback(() => {
+    const pathname = window.location.pathname || "/";
     const params = new URLSearchParams(window.location.search);
     params.delete("auth");
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-  }, [pathname, router]);
+  }, [router]);
 
   useEffect(() => {
     if (!ready) return;
@@ -96,6 +96,7 @@ export default function AuthModalView({ mode }: { mode: AuthMode }) {
 
   const setAuthQuery = (next: "login" | "signup") => {
     setError(null);
+    const pathname = window.location.pathname || "/";
     const params = new URLSearchParams(window.location.search);
     params.set("auth", next);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });

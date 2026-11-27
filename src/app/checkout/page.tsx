@@ -335,13 +335,13 @@ export default function CheckoutPage() {
             </div>
 
             <div className="space-y-2 text-xs border-t border-[#E5E7EB] pt-4 text-zinc-600">
-              {summary && (
+              {summary && summary.totalProductPrice != null && (
                 <div className="flex justify-between">
                   <span>Total Product Price</span>
                   <span>{formatPrice(summary.totalProductPrice)}</span>
                 </div>
               )}
-              {summary && summary.discountAmount > 0 && (
+              {summary && Number(summary.discountAmount) > 0 && (
                 <div className="flex justify-between text-emerald-700">
                   <span>Product Discount</span>
                   <span className="font-semibold">

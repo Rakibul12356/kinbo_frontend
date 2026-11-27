@@ -292,9 +292,16 @@ export default function AccountPage() {
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
           <div className="space-y-2.5 lg:col-span-4">
-            <button
-              type="button"
+            <div
+              role="button"
+              tabIndex={0}
               onClick={() => setActiveTab("profile")}
+              onKeyDown={(e) => {
+                if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                  e.preventDefault();
+                  setActiveTab("profile");
+                }
+              }}
               className={`flex w-full cursor-pointer items-center gap-3.5 rounded-2xl border bg-white p-4 text-left shadow-2xs transition ${
                 activeTab === "profile"
                   ? "border-[#082F6B] bg-[#F3F7FC]/70"
@@ -322,7 +329,7 @@ export default function AccountPage() {
                   <LanguageSwitcher />
                 </div>
               </div>
-            </button>
+            </div>
 
             <div className="space-y-2 pt-1">
               {SIDEBAR.map((item) => {

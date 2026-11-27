@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { CartItem, Product } from "@/types/ecommerce";
 import { useAuth } from "@/hooks/use-auth";
@@ -55,7 +55,6 @@ function readGuestCart(): CartItem[] {
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const pathname = usePathname() || "/";
   const { ready: authReady, user, admin } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [ready, setReady] = useState(false);
@@ -138,6 +137,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         toast.info("Please sign in with a customer account to add items to cart.");
         return;
       }
+      const pathname = window.location.pathname || "/";
       const params = new URLSearchParams(window.location.search);
       params.set("auth", "login");
       router.push(`${pathname}?${params.toString()}`, { scroll: false });
