@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/hooks/use-cart";
 import { useAuth } from "@/hooks/use-auth";
 import { useNotifications } from "@/hooks/use-notifications";
@@ -37,49 +37,19 @@ const menuItemClass =
 export default function Navbar({ onSearchChange }: NavbarProps) {
   const t = useT();
   const router = useRouter();
-  const pathname = usePathname();
   const { totalItems, setIsCartOpen } = useCart();
   const { user, admin } = useAuth();
   const { unreadCount } = useNotifications();
   const queryClient = useQueryClient();
   const [searchInput, setSearchInput] = useState("");
-  const [mobileMenuState, setMobileMenuState] = useState<{ open: boolean; path: string }>({
-    open: false,
-    path: pathname,
-  });
-  const [accountMenuState, setAccountMenuState] = useState<{ open: boolean; path: string }>({
-    open: false,
-    path: pathname,
-  });
-  const isMobileMenuOpen = mobileMenuState.open && mobileMenuState.path === pathname;
-  const accountOpen = accountMenuState.open && accountMenuState.path === pathname;
-  const setIsMobileMenuOpen = React.useCallback(
-    (next: boolean | ((prev: boolean) => boolean)) => {
-      setMobileMenuState((prev) => {
-        const cur = prev.open && prev.path === pathname;
-        const val = typeof next === "function" ? next(cur) : next;
-        return { open: val, path: pathname };
-      });
-    },
-    [pathname]
-  );
-  const setAccountOpen = React.useCallback(
-    (next: boolean | ((prev: boolean) => boolean)) => {
-      setAccountMenuState((prev) => {
-        const cur = prev.open && prev.path === pathname;
-        const val = typeof next === "function" ? next(cur) : next;
-        return { open: val, path: pathname };
-      });
-    },
-    [pathname]
-  );
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
   const isClient = useIsClient();
   const isAdmin = isClient && Boolean(admin);
   const signedIn = isClient && Boolean(user || admin);
   const dashboardHref = isAdmin ? "/admin/dashboard" : "/account";
   const notificationsHref = isAdmin ? "/admin/notifications" : "/inbox";
-  const onProductsListing = pathname === "/products";
 
   useEffect(() => {
     if (!accountOpen) return;
@@ -123,7 +93,7 @@ export default function Navbar({ onSearchChange }: NavbarProps) {
 
   const runSearch = (value: string) => {
     const query = value.trim();
-    if (onSearchChange && onProductsListing) {
+    if (onSearchChange && window.location.pathname === "/products") {
       onSearchChange(query);
       return;
     }
@@ -169,7 +139,9 @@ export default function Navbar({ onSearchChange }: NavbarProps) {
                 value={searchInput}
                 onChange={(e) => {
                   setSearchInput(e.target.value);
-                  if (onSearchChange && onProductsListing) onSearchChange(e.target.value);
+                  if (onSearchChange && window.location.pathname === "/products") {
+                    onSearchChange(e.target.value);
+                  }
                 }}
                 className="w-full rounded-full border border-[#E5E7EB] bg-[#F3F7FC] py-2.5 ps-10 pe-4 text-sm text-[#1F2937] placeholder:text-zinc-400 shadow-2xs outline-none focus:border-[#082F6B] focus:ring-2 focus:ring-[#082F6B]/20"
               />
@@ -311,7 +283,9 @@ export default function Navbar({ onSearchChange }: NavbarProps) {
               value={searchInput}
               onChange={(e) => {
                 setSearchInput(e.target.value);
-                if (onSearchChange && onProductsListing) onSearchChange(e.target.value);
+                if (onSearchChange && window.location.pathname === "/products") {
+                  onSearchChange(e.target.value);
+                }
               }}
               className="w-full rounded-xl border border-[#E5E7EB] bg-[#F3F7FC] py-2.5 ps-10 pe-4 text-sm text-[#1F2937] placeholder:text-zinc-400 outline-none focus:border-[#082F6B]"
             />

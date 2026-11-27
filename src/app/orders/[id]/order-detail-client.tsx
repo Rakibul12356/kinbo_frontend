@@ -48,7 +48,7 @@ export default function OrderDetailClient() {
         : "";
 
   const { user, ready: authReady } = useAuth();
-  const { data: order, isLoading } = useOrderDetail(id);
+  const { data: order, isLoading, isError, error } = useOrderDetail(id);
 
   const timeline = useMemo(() => (order ? buildOrderTimeline(order) : []), [order]);
   const canReview = order?.status === "DELIVERED";
@@ -144,7 +144,9 @@ export default function OrderDetailClient() {
           <p className="text-sm text-zinc-500">Loading order…</p>
         ) : !order ? (
           <div className="rounded-2xl border border-[#E5E7EB] bg-white px-5 py-12 text-center">
-            <p className="text-sm font-semibold text-[#1F2937]">Order not found</p>
+            <p className="text-sm font-semibold text-[#1F2937]">
+              {isError ? extractApiError(error, "Order not found") : "Order not found"}
+            </p>
             <Link
               href="/orders"
               className="mt-3 inline-flex text-xs font-semibold text-[#082F6B] hover:underline"

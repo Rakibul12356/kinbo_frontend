@@ -53,7 +53,7 @@ function OrderDetailContent() {
   const params = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const id = decodeURIComponent(params.id);
-  const { data: order, isLoading } = useOrderDetail(id);
+  const { data: order, isLoading, isError, error } = useOrderDetail(id);
   const [note, setNote] = useState("");
   const [updating, setUpdating] = useState(false);
 
@@ -91,7 +91,9 @@ function OrderDetailContent() {
     return (
       <AdminShell title="Order details" description="Products and delivery address for this order.">
         <div className="rounded-2xl border border-[#E5E7EB] bg-white px-5 py-12 text-center">
-          <p className="text-sm font-semibold text-[#1F2937]">Order not found</p>
+          <p className="text-sm font-semibold text-[#1F2937]">
+            {isError ? extractApiError(error, "Order not found") : "Order not found"}
+          </p>
           <Link
             href={ADMIN_ROUTES.orders}
             className="mt-4 inline-flex text-xs font-semibold text-[#082F6B] hover:underline"

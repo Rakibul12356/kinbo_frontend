@@ -20,10 +20,15 @@ export function useMyOrders() {
 }
 
 export function useOrderDetail(id: string) {
-  const { ready, profile } = useAuth();
+  const { ready, profile, admin } = useAuth();
   return useQuery({
-    queryKey: ORDER_QUERY_KEYS.detail(id),
-    queryFn: () => orderService.getOrderById(id),
+    queryKey: [
+      ...ORDER_QUERY_KEYS.detail(id),
+      admin ? "admin" : "user",
+      profile?.id ?? "",
+    ],
+    queryFn: () =>
+      admin ? orderService.getAdminOrderById(id) : orderService.getOrderById(id),
     enabled: ready && Boolean(profile) && Boolean(id),
   });
 }

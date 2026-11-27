@@ -8,20 +8,29 @@ export const STATIC_BASE_URL = (
   process.env.NEXT_PUBLIC_STATIC_URL || API_BASE_URL
 ).replace(/\/+$/, "");
 
-export function resolveAssetUrl(path?: string | null): string {
+export function resolveAssetUrl(path?: unknown): string {
   if (!path) return "";
+  let str: string | undefined;
+  if (typeof path === "string") {
+    str = path;
+  } else if (typeof path === "object") {
+    const obj = path as Record<string, unknown>;
+    const candidate = obj.url ?? obj.secure_url ?? obj.src ?? obj.path ?? obj.imageUrl;
+    if (typeof candidate === "string") str = candidate;
+  }
+  if (!str) return "";
   if (
-    path.startsWith("http://") ||
-    path.startsWith("https://") ||
-    path.startsWith("data:") ||
-    path.startsWith("blob:")
+    str.startsWith("http://") ||
+    str.startsWith("https://") ||
+    str.startsWith("data:") ||
+    str.startsWith("blob:")
   ) {
-    return path;
+    return str;
   }
-  if (path.startsWith("/uploads")) {
-    return `${STATIC_BASE_URL}${path}`;
+  if (str.startsWith("/uploads")) {
+    return `${STATIC_BASE_URL}${str}`;
   }
-  return path;
+  return str;
 }
 
 export function extractApiError(

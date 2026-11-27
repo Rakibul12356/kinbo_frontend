@@ -88,27 +88,34 @@ export default function CheckoutPage() {
     e.preventDefault();
     if (cart.length === 0 || !user) return;
 
-    if (
-      !form.customerName.trim() ||
-      !form.phone.trim() ||
-      !form.streetAddress.trim() ||
-      !form.city.trim()
-    ) {
+    const customerName = form.customerName.trim();
+    const phone = form.phone.trim();
+    const streetAddress = form.streetAddress.trim();
+    const city = form.city.trim();
+
+    if (!customerName || !phone || !streetAddress || !city) {
       toast.error("Please fill all shipping fields.");
       return;
     }
 
+    const matchesSelectedAddress = Boolean(
+      activeAddress &&
+        customerName === activeAddress.customerName.trim() &&
+        phone === activeAddress.phone.trim() &&
+        streetAddress === activeAddress.streetAddress.trim() &&
+        city === activeAddress.city.trim() &&
+        form.deliveryArea === activeAddress.deliveryArea
+    );
+
     setIsSubmitting(true);
     try {
       const order = await orderService.placeOrder({
+        ...(matchesSelectedAddress && activeAddress ? { addressId: activeAddress.id } : {}),
+        customerName,
+        phone,
+        streetAddress,
+        city,
         deliveryArea: form.deliveryArea,
-        shippingAddress: {
-          customerName: form.customerName.trim(),
-          phone: form.phone.trim(),
-          streetAddress: form.streetAddress.trim(),
-          city: form.city.trim(),
-          deliveryArea: form.deliveryArea,
-        },
         items: itemsPayload,
       });
 
