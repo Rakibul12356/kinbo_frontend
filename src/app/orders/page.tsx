@@ -11,6 +11,7 @@ import {
   Package,
 } from "lucide-react";
 import PageLayout from "@/components/layout/PageLayout";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyOrders } from "@/hooks/use-orders";
 import { USER_ROUTES } from "@/lib/auth/auth-store";
@@ -88,7 +89,7 @@ export default function OrdersPage() {
         </div>
 
         {!authReady || isLoading ? (
-          <p className="text-sm text-zinc-500">Loading orders…</p>
+          <LoadingSpinner label="Loading orders..." />
         ) : admin ? (
           <div className="rounded-2xl border border-[#E5E7EB] bg-white px-5 py-12 text-center">
             <p className="text-sm font-semibold text-[#1F2937]">

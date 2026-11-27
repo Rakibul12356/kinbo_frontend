@@ -7,6 +7,7 @@ import { Bell, CheckCheck, Package } from "lucide-react";
 import { toast } from "react-toastify";
 import AdminShell from "@/views/admin/AdminShell";
 import RouteGuard from "@/components/auth/RouteGuard";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useNotifications, NOTIFICATION_QUERY_KEY } from "@/hooks/use-notifications";
 import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
 import { notificationService } from "@/services/notification.service";
@@ -75,7 +76,7 @@ export default function AdminNotificationsView() {
 
           <div className="divide-y divide-[#E5E7EB]">
             {isLoading ? (
-              <p className="px-4 py-8 text-sm text-zinc-500 sm:px-5">Loading…</p>
+              <LoadingSpinner label="Loading notifications..." />
             ) : notifications.length === 0 ? (
               <div className="px-4 py-12 text-center sm:px-5">
                 <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F3F7FC] text-[#082F6B]">

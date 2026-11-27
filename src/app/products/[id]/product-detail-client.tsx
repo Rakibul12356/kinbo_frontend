@@ -29,8 +29,8 @@ import {
   ChevronRight,
   Heart,
   Bell,
-  Loader2,
 } from "lucide-react";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 
 export default function ProductDetailClient({
   product: initialProduct,
@@ -52,11 +52,7 @@ export default function ProductDetailClient({
   const product = initialProduct ?? fetchedProduct ?? null;
 
   if (!initialProduct && isLoading) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#082F6B]" aria-label="Loading product" />
-      </div>
-    );
+    return <LoadingSpinner size="lg" label="Loading product..." />;
   }
 
   if (!product) {

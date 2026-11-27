@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import RouteGuard from "@/components/auth/RouteGuard";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useProduct } from "@/hooks/use-products";
 import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
 import { extractApiError } from "@/lib/axios";
@@ -44,7 +45,7 @@ function DetailContent() {
   if (isLoading) {
     return (
       <AdminShell title="Product details" description="Admin view of catalog items.">
-        <p className="text-sm text-zinc-500">Loading product…</p>
+        <LoadingSpinner label="Loading product..." />
       </AdminShell>
     );
   }

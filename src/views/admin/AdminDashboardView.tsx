@@ -14,6 +14,7 @@ import {
 import StatCard from "@/components/dashboard/StatCard";
 import GrowthChart from "@/components/dashboard/GrowthChart";
 import RouteGuard from "@/components/auth/RouteGuard";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useAuth } from "@/hooks/use-auth";
 import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
 import { adminService, type ChartFilter } from "@/services/admin.service";
@@ -169,7 +170,7 @@ function DashboardContent() {
           </div>
 
           {overviewLoading ? (
-            <p className="px-5 py-10 text-center text-sm text-zinc-500">Loading…</p>
+            <LoadingSpinner size="sm" label="Loading recent orders..." />
           ) : recentOrders.length === 0 ? (
             <p className="px-5 py-10 text-center text-sm text-zinc-500">
               No recent orders yet.
@@ -224,7 +225,7 @@ function DashboardContent() {
           </div>
 
           {overviewLoading ? (
-            <p className="px-5 py-10 text-center text-sm text-zinc-500">Loading…</p>
+            <LoadingSpinner size="sm" label="Loading return requests..." />
           ) : recentReturns.length === 0 ? (
             <p className="px-5 py-10 text-center text-sm text-zinc-500">
               No return requests right now.

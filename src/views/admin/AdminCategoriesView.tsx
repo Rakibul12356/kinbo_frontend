@@ -8,6 +8,7 @@ import Swal from "sweetalert2";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import RouteGuard from "@/components/auth/RouteGuard";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useManagedCategories } from "@/hooks/use-categories";
 import { extractApiError } from "@/lib/axios";
 import { slugify } from "@/lib/categories";
@@ -208,7 +209,7 @@ function CategoriesContent() {
           </div>
 
           {isLoading ? (
-            <p className="text-sm text-zinc-500">Loading categories…</p>
+            <LoadingSpinner size="sm" label="Loading categories..." />
           ) : categories.length === 0 ? (
             <p className="text-sm text-zinc-500">No categories yet. Add one to get started.</p>
           ) : (

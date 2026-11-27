@@ -7,6 +7,7 @@ import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import AdminShell from "@/views/admin/AdminShell";
 import RouteGuard from "@/components/auth/RouteGuard";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useIsClient } from "@/hooks/use-is-client";
 import {
   DEFAULT_SETTINGS,
@@ -133,7 +134,7 @@ function SettingsContent() {
       title="Settings"
       description="Store profile, shipping defaults, and notification preferences."
     >
-      {!ready ? <p className="text-sm text-zinc-500">Loading settings…</p> : <SettingsForm />}
+      {!ready ? <LoadingSpinner label="Loading settings..." /> : <SettingsForm />}
     </AdminShell>
   );
 }

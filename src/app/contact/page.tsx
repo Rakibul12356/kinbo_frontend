@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import PageLayout from "@/components/layout/PageLayout";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Input from "@/components/ui/input";
 import Button from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -245,8 +246,8 @@ export default function ContactPage() {
     <PageLayout>
       <Suspense
         fallback={
-          <main className="mx-auto w-full flex-1 px-4 py-12 text-center text-sm text-zinc-500">
-            Loading support page…
+          <main className="mx-auto w-full flex-1 px-4 py-12">
+            <LoadingSpinner label="Loading support page..." />
           </main>
         }
       >

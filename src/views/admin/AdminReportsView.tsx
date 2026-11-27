@@ -13,6 +13,7 @@ import {
 import { toast } from "react-toastify";
 import AdminShell from "@/views/admin/AdminShell";
 import RouteGuard from "@/components/auth/RouteGuard";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import GrowthChart from "@/components/dashboard/GrowthChart";
 import StatCard from "@/components/dashboard/StatCard";
 import Button from "@/components/ui/button";
@@ -88,7 +89,7 @@ function ReportsContent() {
       description="Order status breakdown, top products, and support refunds."
     >
       {reportsLoading ? (
-        <p className="text-sm text-zinc-500">Loading reports…</p>
+        <LoadingSpinner label="Loading reports..." />
       ) : (
         <div className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

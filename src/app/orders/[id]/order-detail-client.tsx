@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import PageLayout from "@/components/layout/PageLayout";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useOrderDetail, ORDER_QUERY_KEYS } from "@/hooks/use-orders";
 import { useAuth } from "@/hooks/use-auth";
 import { buildOrderTimeline } from "@/lib/orders/order-timeline";
@@ -141,7 +142,7 @@ export default function OrderDetailClient() {
     <PageLayout className="bg-[#F3F7FC]">
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 sm:py-10">
         {!authReady || isLoading ? (
-          <p className="text-sm text-zinc-500">Loading order…</p>
+          <LoadingSpinner size="lg" label="Loading order..." />
         ) : !order ? (
           <div className="rounded-2xl border border-[#E5E7EB] bg-white px-5 py-12 text-center">
             <p className="text-sm font-semibold text-[#1F2937]">

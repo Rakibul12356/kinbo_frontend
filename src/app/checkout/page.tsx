@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PageLayout from "@/components/layout/PageLayout";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useCart } from "@/hooks/use-cart";
 import { useAuth } from "@/hooks/use-auth";
 import { useAddresses } from "@/hooks/use-account";
@@ -138,8 +139,8 @@ export default function CheckoutPage() {
   if (!authReady || !cartReady) {
     return (
       <PageLayout>
-        <main className="flex-1 container mx-auto px-4 sm:px-6 py-16 text-center">
-          <p className="text-sm text-zinc-500">Loading checkout…</p>
+        <main className="flex-1 container mx-auto px-4 sm:px-6 py-16">
+          <LoadingSpinner label="Loading checkout..." />
         </main>
       </PageLayout>
     );

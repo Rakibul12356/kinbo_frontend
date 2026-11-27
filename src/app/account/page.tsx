@@ -20,6 +20,7 @@ import {
 import { toast } from "react-toastify";
 import PageLayout from "@/components/layout/PageLayout";
 import LanguageSwitcher from "@/components/common/LanguageSwitcher";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import {
@@ -245,8 +246,8 @@ export default function AccountPage() {
   if (!authReady) {
     return (
       <PageLayout className="bg-[#F8FAFC]">
-        <main className="container mx-auto flex-1 px-4 py-16 text-center">
-          <p className="text-sm text-zinc-500">Loading account…</p>
+        <main className="container mx-auto flex-1 px-4 py-16">
+          <LoadingSpinner size="lg" label="Loading account..." />
         </main>
       </PageLayout>
     );
@@ -517,7 +518,7 @@ export default function AccountPage() {
             {activeTab === "products" && (
               <>
                 {ordersLoading ? (
-                  <p className="text-sm text-zinc-500">Loading orders…</p>
+                  <LoadingSpinner size="sm" label="Loading orders..." />
                 ) : orders.length === 0 ? (
                   <ProductListEmpty
                     title="No orders yet"
@@ -565,7 +566,7 @@ export default function AccountPage() {
                   Products you asked to be notified about when back in stock.
                 </p>
                 {notifiedLoading ? (
-                  <p className="text-sm text-zinc-500">Loading stock alerts…</p>
+                  <LoadingSpinner size="sm" label="Loading stock alerts..." />
                 ) : notified.length === 0 ? (
                   <ProductListEmpty
                     title="No stock alerts"
@@ -605,7 +606,7 @@ export default function AccountPage() {
             {activeTab === "wishlists" && (
               <>
                 {wishlistLoading ? (
-                  <p className="text-sm text-zinc-500">Loading wishlist…</p>
+                  <LoadingSpinner size="sm" label="Loading wishlist..." />
                 ) : wishlist.length === 0 ? (
                   <ProductListEmpty
                     title="Wishlist is empty"
@@ -672,7 +673,7 @@ export default function AccountPage() {
                 </div>
 
                 {addressesLoading ? (
-                  <p className="text-sm text-zinc-500">Loading addresses…</p>
+                  <LoadingSpinner size="sm" label="Loading addresses..." />
                 ) : addresses.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-[#E5E7EB] bg-[#F8FAFC] px-4 py-12 text-center">
                     <p className="text-sm font-semibold text-[#1F2937]">No saved addresses</p>

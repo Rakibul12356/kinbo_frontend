@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import PageLayout from "@/components/layout/PageLayout";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useAuth } from "@/hooks/use-auth";
 import { useNotifications, NOTIFICATION_QUERY_KEY } from "@/hooks/use-notifications";
 import { USER_ROUTES } from "@/lib/auth/auth-store";
@@ -66,7 +67,7 @@ export default function InboxPage() {
         </div>
 
         {!authReady || isLoading ? (
-          <p className="text-sm text-zinc-500">Loading notifications…</p>
+          <LoadingSpinner label="Loading notifications..." />
         ) : !profile ? (
           <div className="rounded-2xl border border-[#E5E7EB] bg-white p-10 text-center">
             <p className="text-sm font-semibold text-[#1F2937]">Sign in to view notifications</p>

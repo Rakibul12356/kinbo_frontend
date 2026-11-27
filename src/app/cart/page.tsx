@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import PageLayout from "@/components/layout/PageLayout";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useCart } from "@/hooks/use-cart";
 import { formatPrice } from "@/lib/utils";
 import {
@@ -49,7 +50,7 @@ export default function CartPage() {
         </div>
 
         {!ready ? (
-          <p className="text-sm text-zinc-500">Loading cart…</p>
+          <LoadingSpinner label="Loading cart..." />
         ) : cart.length === 0 ? (
           <div className="bg-white rounded-2xl border border-[#E5E7EB] p-12 text-center max-w-lg mx-auto shadow-xs">
             <div className="w-20 h-20 rounded-full bg-[#082F6B]/10 flex items-center justify-center mx-auto mb-4 text-[#082F6B]">

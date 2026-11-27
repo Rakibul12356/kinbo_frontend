@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import AdminShell from "@/views/admin/AdminShell";
 import RouteGuard from "@/components/auth/RouteGuard";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useAdminOrders, ORDER_QUERY_KEYS } from "@/hooks/use-orders";
 import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
 import { extractApiError } from "@/lib/axios";
@@ -103,7 +104,7 @@ export default function AdminOrdersView() {
           </div>
 
           {isLoading ? (
-            <p className="px-4 py-8 text-sm text-zinc-500">Loading orders…</p>
+            <LoadingSpinner label="Loading orders..." />
           ) : orders.length === 0 ? (
             <div className="space-y-2 px-4 py-10 text-center">
               <p className="text-sm font-semibold text-[#1F2937]">No orders yet</p>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Briefcase, MapPin } from "lucide-react";
 import { toast } from "react-toastify";
 import PageLayout from "@/components/layout/PageLayout";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import { useJobs } from "@/hooks/use-careers";
@@ -132,7 +133,7 @@ export default function CareersPage() {
           </div>
 
           {isLoading ? (
-            <p className="text-sm text-zinc-500">Loading open positions…</p>
+            <LoadingSpinner label="Loading open positions..." />
           ) : jobs.length === 0 ? (
             <div className="rounded-2xl border border-[#E5E7EB] bg-white px-5 py-12 text-center">
               <p className="text-sm font-semibold text-[#1F2937]">No open roles right now</p>

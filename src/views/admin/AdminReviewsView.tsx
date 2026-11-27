@@ -7,6 +7,7 @@ import { Check, Star } from "lucide-react";
 import { toast } from "react-toastify";
 import AdminShell from "@/views/admin/AdminShell";
 import RouteGuard from "@/components/auth/RouteGuard";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useAdminReviews } from "@/hooks/use-reviews";
 import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
 import { extractApiError } from "@/lib/axios";
@@ -65,7 +66,7 @@ function ReviewsContent() {
         </div>
 
         {isLoading ? (
-          <p className="px-5 py-10 text-sm text-zinc-500">Loading reviews…</p>
+          <LoadingSpinner label="Loading reviews..." />
         ) : filtered.length === 0 ? (
           <div className="px-5 py-12 text-center">
             <p className="text-sm font-semibold text-[#1F2937]">No reviews here</p>

@@ -8,6 +8,7 @@ import { toast } from "react-toastify";
 import { ArrowLeft, MapPin, Package, User } from "lucide-react";
 import AdminShell from "@/views/admin/AdminShell";
 import RouteGuard from "@/components/auth/RouteGuard";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useOrderDetail, ORDER_QUERY_KEYS } from "@/hooks/use-orders";
 import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
 import { extractApiError } from "@/lib/axios";
@@ -82,7 +83,7 @@ function OrderDetailContent() {
   if (isLoading) {
     return (
       <AdminShell title="Order details" description="Products and delivery address for this order.">
-        <p className="text-sm text-zinc-500">Loading order…</p>
+        <LoadingSpinner label="Loading order..." />
       </AdminShell>
     );
   }

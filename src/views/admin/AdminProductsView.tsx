@@ -12,6 +12,7 @@ import {
   Search,
 } from "lucide-react";
 import RouteGuard from "@/components/auth/RouteGuard";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import ProductRowActions from "@/components/admin/ProductRowActions";
 import { useProducts } from "@/hooks/use-products";
 import { useManagedCategories } from "@/hooks/use-categories";
@@ -137,7 +138,7 @@ function ProductsContent() {
         </div>
 
         {isLoading ? (
-          <p className="px-5 py-10 text-sm text-zinc-500">Loading products…</p>
+          <LoadingSpinner label="Loading products..." />
         ) : filtered.length === 0 ? (
           <div className="px-5 py-14 text-center">
             <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F3F7FC] text-[#082F6B]">

@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { Briefcase, ExternalLink } from "lucide-react";
 import RouteGuard from "@/components/auth/RouteGuard";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useJobs } from "@/hooks/use-careers";
 import AdminShell from "@/views/admin/AdminShell";
 
@@ -34,7 +35,7 @@ function CareersContent() {
         </div>
 
         {isLoading ? (
-          <p className="px-5 py-10 text-sm text-zinc-500">Loading jobs…</p>
+          <LoadingSpinner label="Loading jobs..." />
         ) : jobs.length === 0 ? (
           <div className="px-5 py-12 text-center">
             <p className="text-sm font-semibold text-[#1F2937]">No open positions</p>

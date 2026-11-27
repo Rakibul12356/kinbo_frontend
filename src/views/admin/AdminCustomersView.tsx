@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Eye, Search, Users, X } from "lucide-react";
 import AdminShell from "@/views/admin/AdminShell";
 import RouteGuard from "@/components/auth/RouteGuard";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useAuth } from "@/hooks/use-auth";
 import { adminService } from "@/services/admin.service";
 import { formatPrice } from "@/lib/utils";
@@ -62,7 +63,7 @@ function CustomersContent() {
         </div>
 
         {isLoading ? (
-          <p className="px-4 py-8 text-sm text-zinc-500">Loading customers…</p>
+          <LoadingSpinner label="Loading customers..." />
         ) : customers.length === 0 ? (
           <div className="px-5 py-12 text-center">
             <p className="text-sm font-semibold text-[#1F2937]">No customers found</p>
@@ -165,7 +166,7 @@ function CustomersContent() {
             </div>
 
             {dossierLoading ? (
-              <p className="text-sm text-zinc-500">Loading customer details…</p>
+              <LoadingSpinner size="sm" label="Loading customer details..." />
             ) : !dossier ? (
               <p className="text-sm text-zinc-500">Could not load customer dossier.</p>
             ) : (

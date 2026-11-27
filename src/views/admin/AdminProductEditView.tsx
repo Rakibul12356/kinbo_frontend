@@ -9,6 +9,7 @@ import { toast } from "react-toastify";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import RouteGuard from "@/components/auth/RouteGuard";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useProduct } from "@/hooks/use-products";
 import { useManagedCategories } from "@/hooks/use-categories";
 import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
@@ -282,7 +283,7 @@ function EditProductContent() {
   if (isLoading) {
     return (
       <AdminShell title="Edit product" description="Update product details.">
-        <p className="text-sm text-zinc-500">Loading product…</p>
+        <LoadingSpinner label="Loading product..." />
       </AdminShell>
     );
   }
