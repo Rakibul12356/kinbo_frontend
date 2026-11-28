@@ -344,8 +344,9 @@ export const productService = {
     name: string;
     slug: string;
   }): Promise<SubcategoryItem> {
+    // Live backend mounts this under /categories (flat /subcategories 404s).
     const response = await apiClient.post<ApiResponse<SubcategoryItem>>(
-      "/subcategories",
+      "/categories/subcategories",
       payload
     );
     return response.data.data;
