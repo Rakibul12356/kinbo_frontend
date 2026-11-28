@@ -217,7 +217,7 @@ function DashboardContent() {
               <p className="text-xs text-zinc-500">Returned and disputed orders</p>
             </div>
             <Link
-              href={ADMIN_ROUTES.orders}
+              href={ADMIN_ROUTES.returns}
               className="inline-flex items-center gap-1 text-xs font-semibold text-[#082F6B] hover:underline"
             >
               Manage <ArrowRight className="h-3.5 w-3.5" />
@@ -239,7 +239,7 @@ function DashboardContent() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <Link
-                      href={ADMIN_ROUTES.orderDetail(order.id)}
+                      href={ADMIN_ROUTES.returns}
                       className="truncate text-sm font-semibold text-[#1F2937] hover:text-[#082F6B]"
                     >
                       {order.orderNumber || order.id}

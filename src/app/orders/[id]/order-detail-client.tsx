@@ -58,7 +58,14 @@ export default function OrderDetailClient() {
     order?.status === "PROCESSING" ||
     order?.status === "CONFIRMED" ||
     order?.status === "PACKING";
-  const canReturn = order?.status === "DELIVERED";
+  const canReturn = useMemo(() => {
+    if (!order || order.status !== "DELIVERED") return false;
+    if (order.returnRequest) return false;
+    const deliveredAt = order.deliveredAt ? new Date(order.deliveredAt) : null;
+    if (!deliveredAt || Number.isNaN(deliveredAt.getTime())) return true;
+    const ms = Date.now() - deliveredAt.getTime();
+    return ms <= 3 * 24 * 60 * 60 * 1000;
+  }, [order]);
 
   const [reviewingProductId, setReviewingProductId] = useState<string | null>(null);
   const [reviewedProductIds, setReviewedProductIds] = useState<Record<string, boolean>>({});

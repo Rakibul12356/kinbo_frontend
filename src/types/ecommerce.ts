@@ -217,6 +217,45 @@ export interface OrderDetail {
   items: OrderDetailItem[];
   statusHistory: OrderStatusHistoryEntry[];
   createdAt?: string;
+  deliveredAt?: string | null;
+  returnRequest?: ReturnRequestSummary | null;
+}
+
+export type ReturnRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export interface ReturnRequestSummary {
+  id: string;
+  orderId: string;
+  userId: string;
+  reason: string;
+  status: ReturnRequestStatus;
+  adminNote?: string | null;
+  refundAmount?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminReturnRequest extends ReturnRequestSummary {
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string | null;
+  };
+  order?: {
+    id: string;
+    orderNumber: string;
+    finalOrderAmount: number;
+    status: OrderStatus;
+    deliveredAt?: string | null;
+    items?: Array<{
+      id: string;
+      productId?: string;
+      productName: string;
+      quantity: number;
+      unitPrice: number;
+    }>;
+  };
 }
 
 export interface SupportTicketPayload {

@@ -24,6 +24,7 @@ export const ADMIN_ROUTES = {
   categories: "/admin/categories",
   orders: "/admin/orders",
   orderDetail: (id: string) => `/admin/orders/${id}`,
+  returns: "/admin/returns",
   customers: "/admin/customers",
   reports: "/admin/reports",
   settings: "/admin/settings",

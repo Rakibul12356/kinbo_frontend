@@ -150,6 +150,32 @@ function normalizeOrderDetail(raw: unknown): OrderDetail {
     statusHistory: rawHistory as OrderDetail["statusHistory"],
     createdAt:
       typeof record.createdAt === "string" ? record.createdAt : undefined,
+    deliveredAt:
+      typeof record.deliveredAt === "string"
+        ? record.deliveredAt
+        : record.deliveredAt === null
+          ? null
+          : undefined,
+    returnRequest:
+      record.returnRequest && typeof record.returnRequest === "object"
+        ? (() => {
+            const rr = record.returnRequest as Record<string, unknown>;
+            return {
+              id: String(rr.id ?? ""),
+              orderId: String(rr.orderId ?? record.id ?? ""),
+              userId: String(rr.userId ?? ""),
+              reason: String(rr.reason ?? ""),
+              status: String(rr.status ?? "PENDING") as NonNullable<
+                OrderDetail["returnRequest"]
+              >["status"],
+              adminNote: (rr.adminNote as string | null | undefined) ?? null,
+              refundAmount:
+                rr.refundAmount != null ? Number(rr.refundAmount) : null,
+              createdAt: String(rr.createdAt ?? ""),
+              updatedAt: String(rr.updatedAt ?? ""),
+            };
+          })()
+        : null,
   };
 }
 
