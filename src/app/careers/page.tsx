@@ -3,56 +3,69 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { Briefcase, MapPin } from "lucide-react";
+import { toast } from "react-toastify";
 import PageLayout from "@/components/layout/PageLayout";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
+import Button from "@/components/ui/button";
+import Input from "@/components/ui/input";
 import { useJobs } from "@/hooks/use-careers";
-import type { JobPosting, JobType } from "@/lib/careers/careers-store";
+import { extractApiError } from "@/lib/axios";
+import { careersService } from "@/services/careers.service";
+import type { JobPosting } from "@/types/ecommerce";
 
-const TYPE_LABEL: Record<JobType, string> = {
-  "full-time": "Full-time",
-  "part-time": "Part-time",
-  contract: "Contract",
-  internship: "Internship",
-};
-
-function JobCard({ job }: { job: JobPosting }) {
+function JobCard({
+  job,
+  onApply,
+}: {
+  job: JobPosting;
+  onApply: (job: JobPosting) => void;
+}) {
   const [open, setOpen] = useState(false);
+
   return (
     <li className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-2xs">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-bold text-[#1F2937]">{job.title}</h2>
           <p className="mt-1 text-xs text-zinc-500">
-            {job.department} · {TYPE_LABEL[job.type]}
+            {job.department} · {job.type.replace(/_/g, " ")}
           </p>
           <p className="mt-1 inline-flex items-center gap-1 text-xs text-zinc-500">
             <MapPin className="h-3.5 w-3.5" />
             {job.location}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="rounded-xl border border-[#E5E7EB] px-3 py-1.5 text-xs font-semibold text-[#082F6B] hover:bg-[#F3F7FC] cursor-pointer"
-        >
-          {open ? "Hide details" : "View details"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="rounded-xl border border-[#E5E7EB] px-3 py-1.5 text-xs font-semibold text-[#082F6B] hover:bg-[#F3F7FC] cursor-pointer"
+          >
+            {open ? "Hide details" : "View details"}
+          </button>
+          <button
+            type="button"
+            onClick={() => onApply(job)}
+            className="rounded-xl bg-[#082F6B] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#062452] cursor-pointer"
+          >
+            Apply
+          </button>
+        </div>
       </div>
       {open && (
         <div className="mt-4 space-y-3 border-t border-[#E5E7EB] pt-4 text-sm text-zinc-600">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">About the role</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">
+              About the role
+            </p>
             <p className="mt-1 whitespace-pre-wrap">{job.description}</p>
           </div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">Requirements</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">
+              Requirements
+            </p>
             <p className="mt-1 whitespace-pre-wrap">{job.requirements}</p>
           </div>
-          <Link
-            href={`/contact?subject=${encodeURIComponent(`Job application: ${job.title}`)}`}
-            className="inline-flex rounded-xl bg-[#082F6B] px-4 py-2 text-xs font-semibold text-white hover:bg-[#062452]"
-          >
-            Apply via Contact
-          </Link>
         </div>
       )}
     </li>
@@ -60,7 +73,38 @@ function JobCard({ job }: { job: JobPosting }) {
 }
 
 export default function CareersPage() {
-  const jobs = useJobs().filter((job) => job.status === "open");
+  const { data: jobs = [], isLoading } = useJobs();
+  const [applyingJob, setApplyingJob] = useState<JobPosting | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    resumeUrl: "",
+    coverLetter: "",
+  });
+
+  const handleApply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!applyingJob) return;
+    setSubmitting(true);
+    try {
+      const msg = await careersService.applyJob(applyingJob.id, {
+        fullName: form.fullName.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        resumeUrl: form.resumeUrl.trim(),
+        coverLetter: form.coverLetter.trim(),
+      });
+      toast.success(msg);
+      setApplyingJob(null);
+      setForm({ fullName: "", email: "", phone: "", resumeUrl: "", coverLetter: "" });
+    } catch (error) {
+      toast.error(extractApiError(error, "Could not submit application."));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <PageLayout className="bg-[#F8FAFC]">
@@ -88,22 +132,97 @@ export default function CareersPage() {
             </div>
           </div>
 
-          {jobs.length === 0 ? (
+          {isLoading ? (
+            <LoadingSpinner label="Loading open positions..." />
+          ) : jobs.length === 0 ? (
             <div className="rounded-2xl border border-[#E5E7EB] bg-white px-5 py-12 text-center">
               <p className="text-sm font-semibold text-[#1F2937]">No open roles right now</p>
               <p className="mt-1 text-xs text-zinc-500">
-                Check back soon, or send your CV through Contact.
+                Check back soon, or reach out through Contact.
               </p>
             </div>
           ) : (
             <ul className="space-y-3">
               {jobs.map((job) => (
-                <JobCard key={job.id} job={job} />
+                <JobCard key={job.id} job={job} onApply={setApplyingJob} />
               ))}
             </ul>
           )}
         </div>
       </main>
+
+      {applyingJob && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
+          <form
+            onSubmit={handleApply}
+            className="w-full max-w-lg space-y-4 rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-xl sm:p-6"
+          >
+            <div>
+              <h3 className="text-base font-bold text-[#1F2937]">
+                Apply for {applyingJob.title}
+              </h3>
+              <p className="mt-0.5 text-xs text-zinc-500">
+                {applyingJob.department} · {applyingJob.location}
+              </p>
+            </div>
+            <Input
+              label="Full Name"
+              required
+              value={form.fullName}
+              onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
+            />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Input
+                label="Email"
+                type="email"
+                required
+                value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              />
+              <Input
+                label="Phone"
+                required
+                placeholder="+8801XXXXXXXXX"
+                value={form.phone}
+                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+              />
+            </div>
+            <Input
+              label="Resume URL"
+              type="url"
+              required
+              placeholder="https://drive.google.com/..."
+              value={form.resumeUrl}
+              onChange={(e) => setForm((f) => ({ ...f, resumeUrl: e.target.value }))}
+            />
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-[#1F2937]">
+                Cover Letter
+              </label>
+              <textarea
+                rows={4}
+                required
+                value={form.coverLetter}
+                onChange={(e) => setForm((f) => ({ ...f, coverLetter: e.target.value }))}
+                placeholder="Tell us why you're a great fit..."
+                className="w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-sm outline-none focus:border-[#082F6B]"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setApplyingJob(null)}
+                className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-[#F8FAFC] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <Button type="submit" size="sm" isLoading={submitting}>
+                Submit Application
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
     </PageLayout>
   );
 }

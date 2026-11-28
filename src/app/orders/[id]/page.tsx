@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import OrderDetailClient from "./order-detail-client";
 
 /** Client URL hooks block static prerender for this segment. */
@@ -11,8 +12,8 @@ export default function Page() {
   return (
     <Suspense
       fallback={
-        <main className="mx-auto min-h-screen w-full max-w-7xl bg-[#F3F7FC] px-4 py-10 sm:px-6">
-          <p className="text-sm text-zinc-500">Loading order…</p>
+        <main className="mx-auto min-h-screen w-full max-w-7xl bg-[#F3F7FC] px-4 py-10 sm:px-6 flex items-center justify-center">
+          <LoadingSpinner size="lg" label="Loading order..." />
         </main>
       }
     >

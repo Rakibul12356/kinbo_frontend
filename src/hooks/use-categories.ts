@@ -1,17 +1,11 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import {
-  getManagedCategories,
-  getServerManagedCategories,
-  subscribeCategories,
-  type ManagedCategory,
-} from "@/lib/categories/categories-store";
+import { useQuery } from "@tanstack/react-query";
+import { productService } from "@/services/product.service";
 
-export function useManagedCategories(): ManagedCategory[] {
-  return useSyncExternalStore(
-    subscribeCategories,
-    getManagedCategories,
-    getServerManagedCategories
-  );
+export function useManagedCategories() {
+  return useQuery({
+    queryKey: ["categories"],
+    queryFn: () => productService.getCategories(),
+  });
 }

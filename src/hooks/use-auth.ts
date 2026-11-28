@@ -1,20 +1,30 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import {
-  findUserById,
   getAuthSnapshot,
   getServerAuthSnapshot,
+  hydrateAuth,
   subscribeAuth,
 } from "@/lib/auth/auth-store";
-import { DEMO_ADMIN } from "@/lib/auth/demo-accounts";
 
 export function useAuth() {
-  const state = useSyncExternalStore(subscribeAuth, getAuthSnapshot, getServerAuthSnapshot);
-  const session = state.session;
+  useEffect(() => {
+    void hydrateAuth();
+  }, []);
+
+  const state = useSyncExternalStore(
+    subscribeAuth,
+    getAuthSnapshot,
+    getServerAuthSnapshot
+  );
+
+  const profile = state.profile;
+
   return {
     ...state,
-    admin: session?.role === "admin" ? DEMO_ADMIN : null,
-    user: session?.role === "user" ? findUserById(session.userId) : null,
+    profile,
+    admin: profile?.role === "ADMIN" ? profile : null,
+    user: profile?.role === "USER" ? profile : null,
   };
 }

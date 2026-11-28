@@ -10,17 +10,20 @@ import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import RouteGuard from "@/components/auth/RouteGuard";
 import { useManagedCategories } from "@/hooks/use-categories";
-import { addCatalogProduct } from "@/lib/catalog/catalog-store";
 import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
+import { extractApiError } from "@/lib/axios";
+import { slugify } from "@/lib/categories";
+import { productService } from "@/services/product.service";
 import AdminShell from "./AdminShell";
 
 interface ProductForm {
   name: string;
   description: string;
   price: string;
-  originalPrice: string;
-  category: string;
-  subcategory: string;
+  discountPercent: string;
+  categoryId: string;
+  subcategoryId: string;
+  brand: string;
   stock: string;
   imageUrl: string;
   isFeatured: boolean;
@@ -29,14 +32,15 @@ interface ProductForm {
 function AddProductContent() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const categories = useManagedCategories();
+  const { data: categories = [] } = useManagedCategories();
   const [form, setForm] = useState<ProductForm>({
     name: "",
     description: "",
     price: "",
-    originalPrice: "",
-    category: "",
-    subcategory: "",
+    discountPercent: "0",
+    categoryId: "",
+    subcategoryId: "",
+    brand: "",
     stock: "10",
     imageUrl: "",
     isFeatured: false,
@@ -44,61 +48,65 @@ function AddProductContent() {
   const [errors, setErrors] = useState<Partial<Record<keyof ProductForm, string>>>({});
   const [saving, setSaving] = useState(false);
 
-  React.useEffect(() => {
-    if (!form.category && categories[0]) {
-      setForm((current) => ({ ...current, category: categories[0].name }));
-    }
-  }, [categories, form.category]);
+  const effectiveCategoryId = form.categoryId || categories[0]?.id || "";
 
   const subcategories = useMemo(
-    () => categories.find((category) => category.name === form.category)?.subcategories ?? [],
-    [categories, form.category]
+    () => categories.find((cat) => cat.id === effectiveCategoryId)?.subcategories ?? [],
+    [categories, effectiveCategoryId]
   );
 
   const setField = <K extends keyof ProductForm>(key: K, value: ProductForm[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const price = Number(form.price);
-    const originalPrice = form.originalPrice.trim() ? Number(form.originalPrice) : undefined;
+    const discountPercent = Number(form.discountPercent || 0);
     const stock = Number(form.stock);
     const nextErrors: Partial<Record<keyof ProductForm, string>> = {};
 
     if (!form.name.trim()) nextErrors.name = "Product name is required.";
     if (!form.description.trim()) nextErrors.description = "Add a short description.";
     if (!Number.isFinite(price) || price <= 0) nextErrors.price = "Enter a price greater than 0.";
-    if (originalPrice !== undefined && (!Number.isFinite(originalPrice) || originalPrice <= price)) {
-      nextErrors.originalPrice = "Compare-at price must be higher than the selling price.";
+    if (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent >= 100) {
+      nextErrors.discountPercent = "Discount must be between 0 and 99%.";
     }
-    if (!form.category) nextErrors.category = "Choose a category.";
+    if (!effectiveCategoryId) nextErrors.categoryId = "Choose a category.";
     if (!Number.isInteger(stock) || stock < 0) nextErrors.stock = "Stock must be a whole number.";
+    if (!form.imageUrl.trim()) nextErrors.imageUrl = "Image URL is required.";
 
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
     setSaving(true);
-    const product = addCatalogProduct({
-      name: form.name,
-      description: form.description,
-      price,
-      originalPrice,
-      category: form.category,
-      subcategory: form.subcategory,
-      stock,
-      imageUrl: form.imageUrl,
-      isFeatured: form.isFeatured,
-    });
-    queryClient.invalidateQueries({ queryKey: ["products"] });
-    toast.success(`${product.name} is live on the store.`);
-    router.push(ADMIN_ROUTES.products);
+    try {
+      const product = await productService.createProduct({
+        name: form.name.trim(),
+        slug: `${slugify(form.name)}-${Date.now().toString(36)}`,
+        description: form.description.trim(),
+        price,
+        discountPercent,
+        stock,
+        categoryId: effectiveCategoryId,
+        subcategoryId: form.subcategoryId || undefined,
+        brand: form.brand.trim() || undefined,
+        isFeatured: form.isFeatured,
+        images: [{ url: form.imageUrl.trim(), isPrimary: true }],
+      });
+      await queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success(`${product.name} is live on the store.`);
+      router.push(ADMIN_ROUTES.products);
+    } catch (error) {
+      toast.error(extractApiError(error, "Could not create product."));
+      setSaving(false);
+    }
   };
 
   return (
     <AdminShell
       title="Add product"
-      description="Name, price, category and stock are enough to publish."
+      description="Create a new product via the backend catalog API."
       actions={
         <Link
           href={ADMIN_ROUTES.products}
@@ -119,7 +127,7 @@ function AddProductContent() {
           </span>
           <div>
             <h2 className="text-base font-bold text-[#1F2937]">New product</h2>
-            <p className="text-xs text-zinc-500">It shows up on the storefront right away.</p>
+            <p className="text-xs text-zinc-500">Published immediately to the storefront.</p>
           </div>
         </div>
 
@@ -128,7 +136,7 @@ function AddProductContent() {
             label="Product name"
             value={form.name}
             onChange={(event) => setField("name", event.target.value)}
-            placeholder="Aura Pro Wireless Headphones"
+            placeholder="Classic Denim Jacket"
             error={errors.name}
           />
           <div className="space-y-1.5">
@@ -140,7 +148,7 @@ function AddProductContent() {
               value={form.description}
               onChange={(event) => setField("description", event.target.value)}
               rows={4}
-              placeholder="What makes this product worth buying?"
+              placeholder="Describe the product..."
               className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm text-[#1F2937] placeholder:text-zinc-400 focus:outline-none focus:ring-2 ${
                 errors.description
                   ? "border-rose-500 focus:border-rose-500 focus:ring-rose-200"
@@ -152,24 +160,24 @@ function AddProductContent() {
 
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Price (৳)"
+              label="Base Price (৳)"
               type="number"
               min="1"
               step="1"
               value={form.price}
               onChange={(event) => setField("price", event.target.value)}
-              placeholder="1450"
+              placeholder="2800"
               error={errors.price}
             />
             <Input
-              label="Compare-at price"
+              label="Discount (%)"
               type="number"
-              min="1"
+              min="0"
+              max="99"
               step="1"
-              value={form.originalPrice}
-              onChange={(event) => setField("originalPrice", event.target.value)}
-              placeholder="Optional"
-              error={errors.originalPrice}
+              value={form.discountPercent}
+              onChange={(event) => setField("discountPercent", event.target.value)}
+              error={errors.discountPercent}
             />
           </div>
 
@@ -180,20 +188,20 @@ function AddProductContent() {
               </label>
               <select
                 id="product-category"
-                value={form.category}
+                value={effectiveCategoryId}
                 onChange={(event) => {
-                  setField("category", event.target.value);
-                  setField("subcategory", "");
+                  setField("categoryId", event.target.value);
+                  setField("subcategoryId", "");
                 }}
                 className="w-full cursor-pointer rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5 text-sm text-[#1F2937] focus:border-[#082F6B] focus:outline-none focus:ring-2 focus:ring-[#082F6B]/20"
               >
                 {categories.map((category) => (
-                  <option key={category.id} value={category.name}>
+                  <option key={category.id} value={category.id}>
                     {category.name}
                   </option>
                 ))}
               </select>
-              {errors.category && <p className="text-xs text-rose-500">{errors.category}</p>}
+              {errors.categoryId && <p className="text-xs text-rose-500">{errors.categoryId}</p>}
             </div>
             <div className="space-y-1.5">
               <label htmlFor="product-subcategory" className="block text-xs font-semibold text-[#1F2937]">
@@ -201,13 +209,13 @@ function AddProductContent() {
               </label>
               <select
                 id="product-subcategory"
-                value={form.subcategory}
-                onChange={(event) => setField("subcategory", event.target.value)}
+                value={form.subcategoryId}
+                onChange={(event) => setField("subcategoryId", event.target.value)}
                 className="w-full cursor-pointer rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5 text-sm text-[#1F2937] focus:border-[#082F6B] focus:outline-none focus:ring-2 focus:ring-[#082F6B]/20"
               >
                 <option value="">None</option>
                 {subcategories.map((subcategory) => (
-                  <option key={subcategory.id} value={subcategory.name}>
+                  <option key={subcategory.id} value={subcategory.id}>
                     {subcategory.name}
                   </option>
                 ))}
@@ -215,21 +223,31 @@ function AddProductContent() {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Stock"
+              type="number"
+              min="0"
+              step="1"
+              value={form.stock}
+              onChange={(event) => setField("stock", event.target.value)}
+              error={errors.stock}
+            />
+            <Input
+              label="Brand (optional)"
+              value={form.brand}
+              onChange={(event) => setField("brand", event.target.value)}
+              placeholder="Kinbo Signature"
+            />
+          </div>
+
           <Input
-            label="Stock"
-            type="number"
-            min="0"
-            step="1"
-            value={form.stock}
-            onChange={(event) => setField("stock", event.target.value)}
-            error={errors.stock}
-          />
-          <Input
-            label="Image URL"
+            label="Primary Image URL"
             value={form.imageUrl}
             onChange={(event) => setField("imageUrl", event.target.value)}
-            placeholder="https://..."
+            placeholder="https://... or /uploads/products/..."
             leftIcon={<ImagePlus className="h-4 w-4" />}
+            error={errors.imageUrl}
           />
 
           <label className="flex cursor-pointer items-center gap-2 text-sm text-[#1F2937]">

@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   ExternalLink,
   Package,
+  PackageCheck,
   PackageX,
   Pencil,
   Star,
@@ -15,18 +16,16 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import RouteGuard from "@/components/auth/RouteGuard";
-import { useCatalogProducts } from "@/hooks/use-catalog";
-import {
-  isAdminOwnedProduct,
-  removeCatalogProduct,
-  setCatalogProductOutOfStock,
-} from "@/lib/catalog/catalog-store";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
+import { useProduct } from "@/hooks/use-products";
 import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
+import { extractApiError } from "@/lib/axios";
+import { productService } from "@/services/product.service";
 import { calculateDiscount, formatPrice } from "@/lib/utils";
 import AdminShell from "./AdminShell";
 
-function stockMeta(stock: number) {
-  if (stock <= 0) {
+function stockMeta(stock: number, isManualOut?: boolean) {
+  if (isManualOut || stock <= 0) {
     return { label: "Out of stock", className: "bg-rose-50 text-rose-700 border-rose-200" };
   }
   if (stock <= 5) {
@@ -40,9 +39,16 @@ function DetailContent() {
   const id = decodeURIComponent(params.id);
   const router = useRouter();
   const queryClient = useQueryClient();
-  const products = useCatalogProducts();
-  const product = products.find((item) => item.id === id);
+  const { data: product, isLoading } = useProduct(id);
   const [activeIndex, setActiveIndex] = useState(0);
+
+  if (isLoading) {
+    return (
+      <AdminShell title="Product details" description="Admin view of catalog items.">
+        <LoadingSpinner label="Loading product..." />
+      </AdminShell>
+    );
+  }
 
   if (!product) {
     return (
@@ -63,16 +69,42 @@ function DetailContent() {
 
   const images = product.images.length > 0 ? product.images : ["/images/logo.png"];
   const activeImage = images[Math.min(activeIndex, images.length - 1)];
-  const stock = stockMeta(product.stock);
+  const stock = stockMeta(product.stock, product.isOutOfStockManual);
   const discount = calculateDiscount(product.price, product.originalPrice);
-  const adminOwned = isAdminOwnedProduct(product);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["products"] });
+
+  const handleToggleStock = async () => {
+    const nextManual = !Boolean(product.isOutOfStockManual);
+    try {
+      await productService.toggleOutOfStock(product.id, nextManual);
+      await refresh();
+      toast.success(
+        nextManual
+          ? `${product.name} marked out of stock.`
+          : `${product.name} marked in stock.`
+      );
+    } catch (error) {
+      toast.error(extractApiError(error, "Could not update stock status."));
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Delete “${product.name}”?`)) return;
+    try {
+      await productService.deleteProduct(product.id);
+      await refresh();
+      toast.success("Product deleted.");
+      router.push(ADMIN_ROUTES.products);
+    } catch (error) {
+      toast.error(extractApiError(error, "Could not delete product."));
+    }
+  };
 
   return (
     <AdminShell
       title="Product details"
-      description="Admin inventory view — stays inside the dashboard."
+      description="Admin inventory view."
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -104,29 +136,17 @@ function DetailContent() {
                   {product.subcategory ? ` · ${product.subcategory}` : ""}
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <span
-                  className={`inline-flex rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${stock.className}`}
-                >
-                  {product.stock} · {stock.label}
-                </span>
-                <span
-                  className={`inline-flex rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
-                    adminOwned
-                      ? "border-[#082F6B]/20 bg-[#082F6B]/10 text-[#082F6B]"
-                      : "border-[#E5E7EB] bg-white text-zinc-600"
-                  }`}
-                >
-                  {adminOwned ? "Admin added" : "Demo catalog"}
-                </span>
-              </div>
+              <span
+                className={`inline-flex rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${stock.className}`}
+              >
+                {product.stock} · {stock.label}
+              </span>
             </div>
           </div>
 
           <div className="grid gap-4 p-4 sm:grid-cols-[minmax(0,1fr)_200px] sm:p-5">
             <div className="space-y-3">
               <div className="relative aspect-4/3 overflow-hidden rounded-xl border border-[#E5E7EB] bg-[#F8FAFC]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={activeImage}
                   alt={product.name}
@@ -146,7 +166,6 @@ function DetailContent() {
                           : "border-[#E5E7EB]"
                       }`}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={image} alt="" className="h-full w-full object-cover" />
                     </button>
                   ))}
@@ -179,15 +198,14 @@ function DetailContent() {
                   <span className="font-normal text-zinc-400">({product.reviewCount} reviews)</span>
                 </dd>
               </div>
-              <div>
-                <dt className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                  Unit / delivery
-                </dt>
-                <dd className="mt-0.5 text-[#1F2937]">
-                  {product.unit ?? "Piece"}
-                  {product.deliveryTime ? ` · ${product.deliveryTime}` : ""}
-                </dd>
-              </div>
+              {product.brand && (
+                <div>
+                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                    Brand
+                  </dt>
+                  <dd className="mt-0.5 text-[#1F2937]">{product.brand}</dd>
+                </div>
+              )}
               <div>
                 <dt className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
                   Slug
@@ -200,18 +218,6 @@ function DetailContent() {
           <div className="border-t border-[#E5E7EB] px-4 py-4 sm:px-5">
             <h3 className="text-sm font-bold text-[#1F2937]">Description</h3>
             <p className="mt-2 text-sm leading-relaxed text-zinc-600">{product.description}</p>
-            {product.tags && product.tags.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {product.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-lg border border-[#E5E7EB] bg-[#F8FAFC] px-2 py-0.5 text-[11px] font-medium text-zinc-600"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
         </section>
 
@@ -231,26 +237,24 @@ function DetailContent() {
               </Link>
               <button
                 type="button"
-                disabled={product.stock <= 0}
-                onClick={() => {
-                  setCatalogProductOutOfStock(product.id);
-                  refresh();
-                  toast.success(`${product.name} marked out of stock.`);
-                }}
-                className="flex w-full cursor-pointer items-center gap-2 rounded-xl border border-[#E5E7EB] px-3 py-2.5 text-sm font-semibold text-[#1F2937] hover:bg-[#F3F7FC] disabled:cursor-not-allowed disabled:opacity-40"
+                onClick={handleToggleStock}
+                className="flex w-full cursor-pointer items-center gap-2 rounded-xl border border-[#E5E7EB] px-3 py-2.5 text-sm font-semibold text-[#1F2937] hover:bg-[#F3F7FC]"
               >
-                <PackageX className="h-4 w-4 text-zinc-500" />
-                Mark out of stock
+                {product.isOutOfStockManual ? (
+                  <>
+                    <PackageCheck className="h-4 w-4 text-emerald-600" />
+                    Mark in stock
+                  </>
+                ) : (
+                  <>
+                    <PackageX className="h-4 w-4 text-zinc-500" />
+                    Mark out of stock
+                  </>
+                )}
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  if (!window.confirm(`Delete “${product.name}”?`)) return;
-                  removeCatalogProduct(product.id);
-                  refresh();
-                  toast.success("Product deleted.");
-                  router.push(ADMIN_ROUTES.products);
-                }}
+                onClick={handleDelete}
                 className="flex w-full cursor-pointer items-center gap-2 rounded-xl border border-rose-200 px-3 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50"
               >
                 <Trash2 className="h-4 w-4" />
@@ -262,10 +266,10 @@ function DetailContent() {
           <section className="rounded-2xl border border-[#E5E7EB] bg-white p-4 sm:p-5">
             <h3 className="text-sm font-bold text-[#1F2937]">Storefront</h3>
             <p className="mt-1 text-xs text-zinc-500">
-              Optional preview of how customers see this item.
+              Preview how customers see this item.
             </p>
             <Link
-              href={`/products/${product.id}`}
+              href={`/products/${product.slug || product.id}`}
               target="_blank"
               rel="noreferrer"
               className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-[#082F6B] hover:underline"
@@ -273,15 +277,6 @@ function DetailContent() {
               Open public page
               <ExternalLink className="h-3.5 w-3.5" />
             </Link>
-          </section>
-
-          <section className="rounded-2xl border border-[#E5E7EB] bg-white p-4 sm:p-5">
-            <h3 className="text-sm font-bold text-[#1F2937]">Flags</h3>
-            <ul className="mt-2 space-y-1.5 text-xs text-zinc-600">
-              <li>Featured: {product.isFeatured ? "Yes" : "No"}</li>
-              <li>New arrival: {product.isNewArrival ? "Yes" : "No"}</li>
-              <li>Discount badge: {product.discountType ?? "None"}</li>
-            </ul>
           </section>
         </aside>
       </div>

@@ -1,17 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { CartItem, Product } from "@/types/ecommerce";
-import {
-  FREE_DELIVERY_THRESHOLD,
-  applyCouponCode,
-  calculateCouponDiscount,
-  findCoupon,
-  getCartOffers,
-  type CartOffer,
-  type CouponDefinition,
-} from "@/lib/coupons";
+import { useAuth } from "@/hooks/use-auth";
+import { cartService } from "@/services/cart.service";
+import { extractApiError } from "@/lib/axios";
 
 interface CartContextType {
   cart: CartItem[];
@@ -20,23 +15,17 @@ interface CartContextType {
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
+  refreshCart: () => Promise<void>;
   totalItems: number;
   subtotal: number;
-  discount: number;
-  shipping: number;
-  total: number;
-  appliedCoupon: CouponDefinition | null;
-  applyCoupon: (code: string) => { ok: true } | { ok: false; error: string };
-  removeCoupon: () => void;
-  offers: CartOffer[];
-  /** False until localStorage cart has been loaded on the client. */
+  /** False until initial cart state has been loaded on the client. */
   ready: boolean;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
-const COUPON_STORAGE_KEY = "kinbo_cart_coupon";
+const GUEST_CART_KEY = "shopping_cart";
 
 function CartToast({
   productName,
@@ -53,66 +42,82 @@ function CartToast({
   );
 }
 
+function readGuestCart(): CartItem[] {
+  try {
+    const raw = localStorage.getItem(GUEST_CART_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as CartItem[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  // Always start empty so SSR HTML matches the first client render.
+  const router = useRouter();
+  const { ready: authReady, user, admin } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [couponCode, setCouponCode] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  useEffect(() => {
+  const syncFromServer = useCallback(async () => {
     try {
-      const stored = localStorage.getItem("shopping_cart");
-      if (stored) setCart(JSON.parse(stored) as CartItem[]);
-      setCouponCode(localStorage.getItem(COUPON_STORAGE_KEY));
+      const serverCart = await cartService.getCart();
+      setCart(serverCart.items);
     } catch {
-      // Ignore corrupt storage
+      // Keep current state if transient network error
     }
-    setReady(true);
   }, []);
 
   useEffect(() => {
-    if (!ready) return;
-    try {
-      localStorage.setItem("shopping_cart", JSON.stringify(cart));
-    } catch {
-      // Ignore localStorage save error
+    if (!authReady) return;
+
+    let cancelled = false;
+
+    async function initCart() {
+      if (user) {
+        // Merge any guest cart items into backend cart upon login
+        const guestItems = readGuestCart();
+        if (guestItems.length > 0) {
+          localStorage.removeItem(GUEST_CART_KEY);
+          await Promise.allSettled(
+            guestItems.map((item) => cartService.addItem(item.product.id, item.quantity))
+          );
+        }
+        try {
+          const serverCart = await cartService.getCart();
+          if (!cancelled) setCart(serverCart.items);
+        } catch {
+          if (!cancelled) setCart([]);
+        }
+      } else {
+        if (!cancelled) setCart(readGuestCart());
+      }
+      if (!cancelled) setReady(true);
     }
-  }, [cart, ready]);
+
+    void initCart();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady, user]);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || user) return;
     try {
-      if (couponCode) localStorage.setItem(COUPON_STORAGE_KEY, couponCode);
-      else localStorage.removeItem(COUPON_STORAGE_KEY);
+      localStorage.setItem(GUEST_CART_KEY, JSON.stringify(cart));
     } catch {
-      // Ignore
+      // Ignore localStorage quota error
     }
-  }, [couponCode, ready]);
+  }, [cart, ready, user]);
 
   const isInCart = (productId: string) =>
     cart.some((item) => item.product.id === productId);
 
-  const addToCart = (product: Product, quantity = 1) => {
-    const alreadyInCart = isInCart(product.id);
-    setCart((prev) => {
-      const existing = prev.find((item) => item.product.id === product.id);
-      if (existing) {
-        return prev.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
-      }
-      return [...prev, { product, quantity }];
-    });
-    const toastId = `cart-${product.id}`;
-    const content = (
-      <CartToast
-        productName={product.name}
-        message={alreadyInCart ? "Quantity updated in cart" : "Added to cart"}
-      />
-    );
+  const showCartToast = (productName: string, message: string, productId: string) => {
+    const toastId = `cart-${productId}`;
+    const content = <CartToast productName={productName} message={message} />;
     if (toast.isActive(toastId)) {
       toast.update(toastId, { render: content, autoClose: 2500 });
     } else {
@@ -120,7 +125,57 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const addToCart = (product: Product, quantity = 1) => {
+    if (product.stock <= 0 || product.isOutOfStockManual) {
+      toast.error("This product is currently out of stock.");
+      return;
+    }
+
+    if (!user) {
+      if (!authReady) return;
+      if (admin) {
+        toast.info("Please sign in with a customer account to add items to cart.");
+        return;
+      }
+      const pathname = window.location.pathname || "/";
+      const params = new URLSearchParams(window.location.search);
+      params.set("auth", "login");
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+      return;
+    }
+
+    const alreadyInCart = isInCart(product.id);
+
+    void (async () => {
+      try {
+        await cartService.addItem(product.id, quantity);
+        await syncFromServer();
+        showCartToast(
+          product.name,
+          alreadyInCart ? "Quantity updated in cart" : "Added to cart",
+          product.id
+        );
+      } catch (error) {
+        toast.error(extractApiError(error, "Could not add item to cart."));
+      }
+    })();
+  };
+
   const removeFromCart = (productId: string) => {
+    if (user) {
+      const target = cart.find((item) => item.product.id === productId);
+      if (!target?.itemId) return;
+      void (async () => {
+        try {
+          await cartService.removeItem(target.itemId!);
+          await syncFromServer();
+        } catch (error) {
+          toast.error(extractApiError(error, "Could not remove item."));
+        }
+      })();
+      return;
+    }
+
     setCart((prev) => prev.filter((item) => item.product.id !== productId));
   };
 
@@ -129,6 +184,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       removeFromCart(productId);
       return;
     }
+
+    if (user) {
+      const target = cart.find((item) => item.product.id === productId);
+      if (!target?.itemId) return;
+      void (async () => {
+        try {
+          await cartService.updateItemQuantity(target.itemId!, quantity);
+          await syncFromServer();
+        } catch (error) {
+          toast.error(extractApiError(error, "Could not update quantity."));
+        }
+      })();
+      return;
+    }
+
     setCart((prev) =>
       prev.map((item) =>
         item.product.id === productId ? { ...item, quantity } : item
@@ -137,8 +207,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const clearCart = () => {
+    if (user) {
+      setCart([]);
+      void cartService.clearCart().catch(() => {
+        void syncFromServer();
+      });
+      return;
+    }
     setCart([]);
-    setCouponCode(null);
+    try {
+      localStorage.removeItem(GUEST_CART_KEY);
+    } catch {
+      // ignore
+    }
   };
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -146,36 +227,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     (sum, item) => sum + item.product.price * item.quantity,
     0
   );
-
-  const appliedCoupon = useMemo(() => {
-    if (!couponCode) return null;
-    const coupon = findCoupon(couponCode);
-    if (!coupon) return null;
-    if (coupon.minSubtotal && subtotal < coupon.minSubtotal) return null;
-    return coupon;
-  }, [couponCode, subtotal]);
-
-  const discount = appliedCoupon
-    ? calculateCouponDiscount(appliedCoupon, subtotal)
-    : 0;
-
-  const shipping =
-    subtotal === 0 || subtotal - discount >= FREE_DELIVERY_THRESHOLD ? 0 : 60;
-
-  const total = Math.max(0, subtotal - discount + shipping);
-  const offers = getCartOffers(subtotal);
-
-  const applyCoupon = (code: string) => {
-    const result = applyCouponCode(code, subtotal);
-    if (!result.ok) return result;
-    setCouponCode(result.coupon.code);
-    toast.success(`${result.coupon.code} applied — ${result.coupon.label}`);
-    return { ok: true as const };
-  };
-
-  const removeCoupon = () => {
-    setCouponCode(null);
-  };
 
   return (
     <CartContext.Provider
@@ -186,15 +237,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         removeFromCart,
         updateQuantity,
         clearCart,
+        refreshCart: syncFromServer,
         totalItems,
         subtotal,
-        discount,
-        shipping,
-        total,
-        appliedCoupon,
-        applyCoupon,
-        removeCoupon,
-        offers,
         ready,
         isCartOpen,
         setIsCartOpen,

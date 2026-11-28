@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -12,43 +12,41 @@ import {
   Search,
 } from "lucide-react";
 import RouteGuard from "@/components/auth/RouteGuard";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import ProductRowActions from "@/components/admin/ProductRowActions";
-import { useAddedProducts, useCatalogProducts } from "@/hooks/use-catalog";
+import { useProducts } from "@/hooks/use-products";
 import { useManagedCategories } from "@/hooks/use-categories";
-import { isAdminOwnedProduct } from "@/lib/catalog/catalog-store";
 import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
 import { formatPrice } from "@/lib/utils";
-import type { Product } from "@/types/ecommerce";
 import AdminShell from "./AdminShell";
 
 const PAGE_SIZE = 10;
 
 type StockFilter = "all" | "in_stock" | "low" | "out";
-type SourceFilter = "all" | "admin" | "catalog";
 
-function stockLabel(stock: number) {
-  if (stock <= 0) return { text: "Out of stock", className: "bg-rose-50 text-rose-700 border-rose-200" };
-  if (stock <= 5) return { text: "Low stock", className: "bg-amber-50 text-amber-700 border-amber-200" };
+function stockLabel(stock: number, isManualOut?: boolean) {
+  if (isManualOut || stock <= 0) {
+    return { text: "Out of stock", className: "bg-rose-50 text-rose-700 border-rose-200" };
+  }
+  if (stock <= 5) {
+    return { text: "Low stock", className: "bg-amber-50 text-amber-700 border-amber-200" };
+  }
   return { text: "In stock", className: "bg-emerald-50 text-emerald-700 border-emerald-200" };
 }
 
 function ProductsContent() {
-  const products = useCatalogProducts();
-  const added = useAddedProducts();
-  const categories = useManagedCategories();
+  const { data: products = [], isLoading } = useProducts();
+  const { data: categories = [] } = useManagedCategories();
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [stockFilter, setStockFilter] = useState<StockFilter>("all");
-  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return products.filter((product) => {
       if (category !== "all" && product.category !== category) return false;
-      if (sourceFilter === "admin" && !isAdminOwnedProduct(product)) return false;
-      if (sourceFilter === "catalog" && isAdminOwnedProduct(product)) return false;
       if (stockFilter === "in_stock" && product.stock <= 5) return false;
       if (stockFilter === "low" && (product.stock <= 0 || product.stock > 5)) return false;
       if (stockFilter === "out" && product.stock > 0) return false;
@@ -60,7 +58,7 @@ function ProductsContent() {
         product.id.toLowerCase().includes(q)
       );
     });
-  }, [products, search, category, stockFilter, sourceFilter]);
+  }, [products, search, category, stockFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -68,18 +66,10 @@ function ProductsContent() {
   const rangeStart = filtered.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const rangeEnd = Math.min(currentPage * PAGE_SIZE, filtered.length);
 
-  useEffect(() => {
-    setPage(1);
-  }, [search, category, stockFilter, sourceFilter]);
-
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
-
   return (
     <AdminShell
       title="Products"
-      description="Browse the full catalog, filter what you need, and add new items."
+      description="Manage catalog inventory, stock availability, and new product listings."
       actions={
         <Link
           href={ADMIN_ROUTES.productNew}
@@ -96,24 +86,30 @@ function ProductsContent() {
             <Package className="h-4 w-4 text-[#082F6B]" />
             <h2 className="text-sm font-bold text-[#1F2937]">All products</h2>
             <span className="text-xs text-zinc-400">
-              ({filtered.length} shown · {products.length} total · {added.length} admin-added)
+              ({filtered.length} shown · {products.length} total)
             </span>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="relative sm:col-span-2 lg:col-span-1">
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
               <input
                 type="search"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="Search name, category…"
                 className="w-full rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] py-2 pl-9 pr-3 text-sm text-[#1F2937] outline-none focus:border-[#082F6B] focus:bg-white focus:ring-2 focus:ring-[#082F6B]/20"
               />
             </div>
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) => {
+                setCategory(e.target.value);
+                setPage(1);
+              }}
               aria-label="Filter by category"
               className="cursor-pointer rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none focus:border-[#082F6B] focus:ring-2 focus:ring-[#082F6B]/20"
             >
@@ -126,7 +122,10 @@ function ProductsContent() {
             </select>
             <select
               value={stockFilter}
-              onChange={(e) => setStockFilter(e.target.value as StockFilter)}
+              onChange={(e) => {
+                setStockFilter(e.target.value as StockFilter);
+                setPage(1);
+              }}
               aria-label="Filter by stock"
               className="cursor-pointer rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none focus:border-[#082F6B] focus:ring-2 focus:ring-[#082F6B]/20"
             >
@@ -135,25 +134,17 @@ function ProductsContent() {
               <option value="low">Low stock (1–5)</option>
               <option value="out">Out of stock</option>
             </select>
-            <select
-              value={sourceFilter}
-              onChange={(e) => setSourceFilter(e.target.value as SourceFilter)}
-              aria-label="Filter by source"
-              className="cursor-pointer rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none focus:border-[#082F6B] focus:ring-2 focus:ring-[#082F6B]/20"
-            >
-              <option value="all">All sources</option>
-              <option value="admin">Admin added</option>
-              <option value="catalog">Demo catalog</option>
-            </select>
           </div>
         </div>
 
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <LoadingSpinner label="Loading products..." />
+        ) : filtered.length === 0 ? (
           <div className="px-5 py-14 text-center">
             <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F3F7FC] text-[#082F6B]">
               <Package className="h-6 w-6" />
             </span>
-            <p className="mt-3 text-sm font-semibold text-[#1F2937]">No products match</p>
+            <p className="mt-3 text-sm font-semibold text-[#1F2937]">No products found</p>
             <p className="mt-1 text-xs text-zinc-500">Try clearing filters or add a new product.</p>
             <Link
               href={ADMIN_ROUTES.productNew}
@@ -173,22 +164,19 @@ function ProductsContent() {
                     <th className="px-4 py-3 font-semibold">Category</th>
                     <th className="px-4 py-3 font-semibold">Price</th>
                     <th className="px-4 py-3 font-semibold">Stock</th>
-                    <th className="px-4 py-3 font-semibold">Source</th>
                     <th className="px-4 py-3 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E5E7EB]">
                   {paged.map((product) => {
-                    const stock = stockLabel(product.stock);
-                    const admin = isAdminOwnedProduct(product);
+                    const stock = stockLabel(product.stock, product.isOutOfStockManual);
                     return (
                       <tr key={product.id} className="align-middle">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-[#F3F7FC]">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
-                                src={product.images[0]}
+                                src={product.images[0] || "/images/logo.png"}
                                 alt=""
                                 className="h-full w-full object-cover"
                               />
@@ -218,17 +206,6 @@ function ProductsContent() {
                             className={`inline-flex rounded-lg border px-2 py-0.5 text-[11px] font-semibold ${stock.className}`}
                           >
                             {product.stock} · {stock.text}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex rounded-lg border px-2 py-0.5 text-[11px] font-semibold ${
-                              admin
-                                ? "border-[#082F6B]/20 bg-[#082F6B]/10 text-[#082F6B]"
-                                : "border-[#E5E7EB] bg-[#F8FAFC] text-zinc-600"
-                            }`}
-                          >
-                            {admin ? "Admin" : "Catalog"}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">

@@ -2,7 +2,7 @@
 
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useAuth } from "@/hooks/use-auth";
 import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
 
@@ -38,11 +38,7 @@ export default function RouteGuard({
   }, [redirectTo, router]);
 
   if (!auth.ready || redirectTo) {
-    return (
-      <div className="flex min-h-screen flex-1 items-center justify-center bg-[#F3F7FC]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#082F6B]" aria-label="Loading" />
-      </div>
-    );
+    return <LoadingSpinner fullScreen label="Loading..." />;
   }
 
   return <>{children}</>;

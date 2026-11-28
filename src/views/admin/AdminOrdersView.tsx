@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-toastify";
 import {
   ChevronLeft,
   ChevronRight,
@@ -12,41 +14,53 @@ import {
 } from "lucide-react";
 import AdminShell from "@/views/admin/AdminShell";
 import RouteGuard from "@/components/auth/RouteGuard";
-import { useOrders } from "@/hooks/use-orders";
-import { updateOrderStatus, type StoreOrder } from "@/lib/orders/order-store";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
+import { useAdminOrders, ORDER_QUERY_KEYS } from "@/hooks/use-orders";
 import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
+import { extractApiError } from "@/lib/axios";
+import { orderService } from "@/services/order.service";
 import { formatPrice } from "@/lib/utils";
+import type { OrderStatus } from "@/types/ecommerce";
 
 const PAGE_SIZE = 8;
 
-const STATUS_OPTIONS: StoreOrder["status"][] = [
-  "pending",
-  "confirmed",
-  "shipped",
-  "delivered",
-  "cancelled",
-  "returned",
+const STATUS_OPTIONS: OrderStatus[] = [
+  "PENDING",
+  "PROCESSING",
+  "CONFIRMED",
+  "PACKING",
+  "PACKED",
+  "DELIVERING",
+  "DELIVERED",
+  "CANCELLED",
+  "RETURNED",
 ];
 
-function statusClass(status: StoreOrder["status"]) {
+function statusClass(status: OrderStatus) {
   switch (status) {
-    case "pending":
+    case "PENDING":
       return "bg-amber-50 text-amber-700 border-amber-200";
-    case "confirmed":
+    case "PROCESSING":
+      return "bg-indigo-50 text-indigo-700 border-indigo-200";
+    case "CONFIRMED":
       return "bg-sky-50 text-sky-700 border-sky-200";
-    case "shipped":
+    case "PACKING":
+    case "PACKED":
+      return "bg-violet-50 text-violet-700 border-violet-200";
+    case "DELIVERING":
       return "bg-[#082F6B]/10 text-[#082F6B] border-[#082F6B]/20";
-    case "delivered":
+    case "DELIVERED":
       return "bg-emerald-50 text-emerald-700 border-emerald-200";
-    case "cancelled":
+    case "CANCELLED":
       return "bg-rose-50 text-rose-700 border-rose-200";
-    case "returned":
+    case "RETURNED":
       return "bg-orange-50 text-orange-700 border-orange-200";
   }
 }
 
 export default function AdminOrdersView() {
-  const { ready, orders } = useOrders();
+  const queryClient = useQueryClient();
+  const { data: orders = [], isLoading } = useAdminOrders();
   const [page, setPage] = useState(1);
 
   const totalPages = Math.max(1, Math.ceil(orders.length / PAGE_SIZE));
@@ -58,39 +72,45 @@ export default function AdminOrdersView() {
   const rangeStart = orders.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const rangeEnd = Math.min(currentPage * PAGE_SIZE, orders.length);
 
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
+  const handleStatusChange = async (orderId: string, status: OrderStatus) => {
+    try {
+      const msg = await orderService.advanceOrderStatus(orderId, { status });
+      toast.success(msg);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ORDER_QUERY_KEYS.adminOrders }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "analytics"] }),
+      ]);
+    } catch (error) {
+      toast.error(extractApiError(error, "Could not update order status."));
+    }
+  };
 
   return (
     <RouteGuard step="admin">
       <AdminShell
         title="Orders"
-        description="Customer confirmations from checkout. Update status as you fulfill."
+        description="Manage 9-stage COD order lifecycle and fulfillment."
       >
         <section className="overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white">
           <div className="flex flex-wrap items-center gap-2 border-b border-[#E5E7EB] px-4 py-3">
             <Package className="h-4 w-4 text-[#082F6B]" />
-            <h2 className="text-sm font-bold text-[#1F2937]">All orders</h2>
+            <h2 className="text-sm font-bold text-[#1F2937]">Orders</h2>
             <span className="text-xs text-zinc-400">({orders.length})</span>
-            {ready && orders.length > 0 && (
+            {!isLoading && orders.length > 0 && (
               <span className="ms-auto text-xs text-zinc-500">
                 Showing {rangeStart}–{rangeEnd} of {orders.length}
               </span>
             )}
           </div>
 
-          {!ready ? (
-            <p className="px-4 py-8 text-sm text-zinc-500">Loading orders…</p>
+          {isLoading ? (
+            <LoadingSpinner label="Loading orders..." />
           ) : orders.length === 0 ? (
             <div className="space-y-2 px-4 py-10 text-center">
               <p className="text-sm font-semibold text-[#1F2937]">No orders yet</p>
               <p className="text-xs text-zinc-500">
-                When a customer confirms checkout, the order shows up here.
+                When a customer places a COD order, it appears here.
               </p>
-              <Link href="/" className="inline-block text-xs font-semibold text-[#082F6B] hover:underline">
-                Open storefront
-              </Link>
             </div>
           ) : (
             <>
@@ -99,7 +119,7 @@ export default function AdminOrdersView() {
                   <thead className="bg-[#F8FAFC] text-xs uppercase tracking-wide text-zinc-500">
                     <tr>
                       <th className="px-4 py-3 font-semibold">Order</th>
-                      <th className="px-4 py-3 font-semibold">Customer</th>
+                      <th className="px-4 py-3 font-semibold">Payment</th>
                       <th className="px-4 py-3 font-semibold">Items</th>
                       <th className="px-4 py-3 font-semibold">Total</th>
                       <th className="px-4 py-3 font-semibold">Status</th>
@@ -114,41 +134,28 @@ export default function AdminOrdersView() {
                             href={ADMIN_ROUTES.orderDetail(order.id)}
                             className="font-mono text-xs font-bold text-[#082F6B] hover:underline"
                           >
-                            {order.id}
+                            {order.orderNumber || order.id}
                           </Link>
                           <p className="mt-0.5 text-[11px] text-zinc-400">
                             {new Date(order.createdAt).toLocaleString()}
                           </p>
                         </td>
-                        <td className="px-4 py-3">
-                          <p className="font-semibold text-[#1F2937]">{order.shipping.fullName}</p>
-                          <p className="text-xs text-zinc-500">{order.shipping.phone}</p>
-                          <p className="text-xs text-zinc-400">{order.shipping.city}</p>
+                        <td className="px-4 py-3 text-xs text-zinc-600">
+                          {order.paymentMethod} · {order.paymentStatus}
                         </td>
-                        <td className="px-4 py-3">
-                          <ul className="space-y-1">
-                            {order.items.slice(0, 3).map((item) => (
-                              <li key={`${order.id}-${item.productId}`} className="text-xs text-zinc-600">
-                                {item.quantity}× {item.name}
-                              </li>
-                            ))}
-                            {order.items.length > 3 && (
-                              <li className="text-[11px] text-zinc-400">
-                                +{order.items.length - 3} more
-                              </li>
-                            )}
-                          </ul>
+                        <td className="px-4 py-3 text-xs text-zinc-600">
+                          {order.itemsCount ?? "—"} item(s)
                         </td>
                         <td className="px-4 py-3 font-bold text-[#1F2937]">
-                          {formatPrice(order.total)}
+                          {formatPrice(order.finalOrderAmount)}
                         </td>
                         <td className="px-4 py-3">
                           <select
                             value={order.status}
                             onChange={(e) =>
-                              updateOrderStatus(order.id, e.target.value as StoreOrder["status"])
+                              handleStatusChange(order.id, e.target.value as OrderStatus)
                             }
-                            className={`cursor-pointer rounded-lg border px-2.5 py-1.5 text-xs font-semibold capitalize outline-none ${statusClass(order.status)}`}
+                            className={`cursor-pointer rounded-lg border px-2.5 py-1.5 text-xs font-semibold outline-none ${statusClass(order.status)}`}
                           >
                             {STATUS_OPTIONS.map((status) => (
                               <option key={status} value={status}>
@@ -196,7 +203,6 @@ export default function AdminOrdersView() {
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
-
                     {Array.from({ length: totalPages }).map((_, i) => {
                       const pageNumber = i + 1;
                       const active = pageNumber === currentPage;
@@ -205,7 +211,6 @@ export default function AdminOrdersView() {
                           key={pageNumber}
                           type="button"
                           onClick={() => setPage(pageNumber)}
-                          aria-label={`Go to page ${pageNumber}`}
                           aria-current={active ? "page" : undefined}
                           className={`inline-flex h-9 min-w-9 items-center justify-center rounded-xl px-2.5 text-sm font-semibold transition cursor-pointer ${
                             active
@@ -217,7 +222,6 @@ export default function AdminOrdersView() {
                         </button>
                       );
                     })}
-
                     <button
                       type="button"
                       onClick={() => setPage((p) => Math.min(totalPages, p + 1))}

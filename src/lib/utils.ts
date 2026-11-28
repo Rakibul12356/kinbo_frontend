@@ -8,9 +8,11 @@ export function cn(
   return inputs.filter(Boolean).join(" ");
 }
 
-export function formatPrice(price: number): string {
+export function formatPrice(price: number | string | null | undefined): string {
   // Format with Bengali Taka symbol (৳) as in store design
-  return `৳${price % 1 === 0 ? price : price.toFixed(2)}`;
+  const numeric = typeof price === "number" ? price : Number(price);
+  const safe = Number.isFinite(numeric) ? numeric : 0;
+  return `৳${safe % 1 === 0 ? safe : safe.toFixed(2)}`;
 }
 
 export function calculateDiscount(price: number, originalPrice?: number): number {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -11,32 +11,41 @@ import {
   Package,
 } from "lucide-react";
 import PageLayout from "@/components/layout/PageLayout";
-import { useOrders } from "@/hooks/use-orders";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
+import { useAuth } from "@/hooks/use-auth";
+import { useMyOrders } from "@/hooks/use-orders";
+import { USER_ROUTES } from "@/lib/auth/auth-store";
 import { formatPrice } from "@/lib/utils";
-import type { StoreOrder } from "@/lib/orders/order-store";
+import type { OrderStatus } from "@/types/ecommerce";
 
 const PAGE_SIZE = 5;
 
-function statusStyle(status: StoreOrder["status"]) {
+function statusStyle(status: OrderStatus) {
   switch (status) {
-    case "pending":
+    case "PENDING":
       return "bg-amber-100 text-amber-700";
-    case "confirmed":
+    case "PROCESSING":
+      return "bg-indigo-100 text-indigo-700";
+    case "CONFIRMED":
       return "bg-sky-100 text-sky-700";
-    case "shipped":
+    case "PACKING":
+    case "PACKED":
+      return "bg-violet-100 text-violet-700";
+    case "DELIVERING":
       return "bg-[#082F6B]/10 text-[#082F6B]";
-    case "delivered":
+    case "DELIVERED":
       return "bg-emerald-100 text-emerald-700";
-    case "cancelled":
+    case "CANCELLED":
       return "bg-rose-100 text-rose-700";
-    case "returned":
+    case "RETURNED":
       return "bg-orange-100 text-orange-700";
   }
 }
 
 export default function OrdersPage() {
   const router = useRouter();
-  const { ready, orders } = useOrders();
+  const { ready: authReady, user, admin } = useAuth();
+  const { data: orders = [], isLoading } = useMyOrders();
   const [page, setPage] = useState(1);
 
   const totalPages = Math.max(1, Math.ceil(orders.length / PAGE_SIZE));
@@ -47,10 +56,6 @@ export default function OrdersPage() {
   );
   const rangeStart = orders.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const rangeEnd = Math.min(currentPage * PAGE_SIZE, orders.length);
-
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
 
   const openDetails = (orderId: string) => {
     router.push(`/orders/${encodeURIComponent(orderId)}`);
@@ -69,7 +74,7 @@ export default function OrdersPage() {
               <span className="text-[#082F6B]">Orders</span>
             </div>
             <h1 className="text-2xl font-extrabold text-[#1F2937] sm:text-3xl">My Orders</h1>
-            {ready && orders.length > 0 && (
+            {!isLoading && orders.length > 0 && (
               <p className="mt-1 text-xs text-zinc-500">
                 Showing {rangeStart}–{rangeEnd} of {orders.length}
               </p>
@@ -83,8 +88,30 @@ export default function OrdersPage() {
           </Link>
         </div>
 
-        {!ready ? (
-          <p className="text-sm text-zinc-500">Loading orders…</p>
+        {!authReady || isLoading ? (
+          <LoadingSpinner label="Loading orders..." />
+        ) : admin ? (
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white px-5 py-12 text-center">
+            <p className="text-sm font-semibold text-[#1F2937]">
+              You are signed in as Admin
+            </p>
+            <Link
+              href="/admin/orders"
+              className="mt-3 inline-flex rounded-xl bg-[#082F6B] px-5 py-2 text-xs font-semibold text-white hover:bg-[#062452]"
+            >
+              Go to Admin Orders
+            </Link>
+          </div>
+        ) : !user ? (
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white px-5 py-12 text-center">
+            <p className="text-sm font-semibold text-[#1F2937]">Sign in to view your orders</p>
+            <Link
+              href={USER_ROUTES.login}
+              className="mt-3 inline-flex rounded-xl bg-[#082F6B] px-5 py-2 text-xs font-semibold text-white hover:bg-[#062452]"
+            >
+              Sign In
+            </Link>
+          </div>
         ) : orders.length === 0 ? (
           <div className="rounded-2xl border border-[#E5E7EB] bg-white px-5 py-12 text-center">
             <p className="text-sm font-semibold text-[#1F2937]">No orders yet</p>
@@ -115,7 +142,9 @@ export default function OrdersPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <Package className="h-4 w-4 text-[#082F6B]" />
-                      <span className="text-sm font-bold text-[#1F2937]">{order.id}</span>
+                      <span className="text-sm font-bold text-[#1F2937]">
+                        {order.orderNumber || order.id}
+                      </span>
                     </div>
                     <span className="text-xs text-zinc-400">
                       Placed on {new Date(order.createdAt).toLocaleString()}
@@ -123,23 +152,20 @@ export default function OrdersPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <span
-                      className={`rounded-full px-2.5 py-1 text-[11px] font-bold capitalize ${statusStyle(order.status)}`}
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${statusStyle(order.status)}`}
                     >
                       {order.status}
                     </span>
                     <span className="text-base font-bold text-[#082F6B]">
-                      {formatPrice(order.total)}
+                      {formatPrice(order.finalOrderAmount)}
                     </span>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between gap-3 pt-4">
                   <p className="text-xs font-medium text-zinc-600">
-                    {order.items
-                      .slice(0, 2)
-                      .map((item) => `${item.name} (x${item.quantity})`)
-                      .join(", ")}
-                    {order.items.length > 2 ? ` +${order.items.length - 2} more` : ""}
+                    {order.itemsCount ?? 0} item{order.itemsCount === 1 ? "" : "s"} ·{" "}
+                    {order.paymentMethod} ({order.paymentStatus})
                   </p>
                   <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#082F6B]">
                     Details

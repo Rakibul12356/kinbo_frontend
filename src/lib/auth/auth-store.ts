@@ -1,17 +1,12 @@
 "use client";
 
-/**
- * Frontend-only mock auth. Everything lives in localStorage until the backend
- * auth API exists; swap these functions for API calls when it does.
- */
+import { extractApiError } from "@/lib/axios";
+import { authService } from "@/services/auth.service";
+import type { UserProfile } from "@/types/ecommerce";
+import type { AuthState, Session } from "./types";
 
-import { DEMO_ADMIN, DEMO_USER } from "./demo-accounts";
-import type { AdminAccount, AuthState } from "./types";
-import { normalizePhone } from "./validation";
-
-const STORAGE_KEY = "kinbo_mock_auth";
-const USERS_KEY = "kinbo_mock_users";
-const STORAGE_VERSION = 3;
+const TOKEN_KEY = "token";
+const PROFILE_KEY = "kinbo_user_profile";
 
 export const USER_ROUTES = {
   login: "/?auth=login",
@@ -37,62 +32,6 @@ export const ADMIN_ROUTES = {
   careers: "/admin/careers",
 } as const;
 
-const RESET_TOKENS_KEY = "kinbo_password_reset_tokens";
-const PASSWORD_OVERRIDES_KEY = "kinbo_password_overrides";
-
-type ResetTokenRecord = {
-  email: string;
-  token: string;
-  expiresAt: number;
-};
-
-function loadResetTokens(): ResetTokenRecord[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(RESET_TOKENS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as ResetTokenRecord[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveResetTokens(tokens: ResetTokenRecord[]) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(RESET_TOKENS_KEY, JSON.stringify(tokens));
-  } catch {
-    // ignore
-  }
-}
-
-function loadPasswordOverrides(): Record<string, string> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = localStorage.getItem(PASSWORD_OVERRIDES_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, string>;
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-function savePasswordOverrides(map: Record<string, string>) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(PASSWORD_OVERRIDES_KEY, JSON.stringify(map));
-  } catch {
-    // ignore
-  }
-}
-
-function effectivePassword(account: AdminAccount): string {
-  const overrides = loadPasswordOverrides();
-  return overrides[account.email] ?? account.password;
-}
-
 export type ActionResult<T = object> =
   | ({ ok: true } & T)
   | { ok: false; error: string };
@@ -100,75 +39,100 @@ export type ActionResult<T = object> =
 const SERVER_STATE: AuthState = {
   ready: false,
   session: null,
+  profile: null,
 };
 
-let state: AuthState | null = null;
+let state: AuthState = SERVER_STATE;
+let hydrated = false;
+let hydratingPromise: Promise<void> | null = null;
 const listeners = new Set<() => void>();
 
-function freshState(): AuthState {
+function toSession(profile: UserProfile | null): Session | null {
+  if (!profile) return null;
   return {
-    ready: true,
-    session: null,
+    role: profile.role === "ADMIN" ? "admin" : "user",
+    userId: profile.id,
   };
 }
 
-function load(): AuthState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed.version === STORAGE_VERSION) {
-        return { ...parsed.data, ready: true };
-      }
-    }
-  } catch {
-    // Corrupt storage falls back to a clean session.
-  }
-  return freshState();
-}
-
-function setState(next: AuthState) {
-  state = next;
-  try {
-    const data = { session: next.session };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: STORAGE_VERSION, data }));
-  } catch {
-    // Quota errors shouldn't break the in-memory flow.
-  }
+function emit() {
   listeners.forEach((listener) => listener());
 }
 
-function update(patch: Partial<AuthState>) {
-  setState({ ...getAuthSnapshot(), ...patch });
+function setAuthState(profile: UserProfile | null, ready = true) {
+  state = {
+    ready,
+    session: toSession(profile),
+    profile,
+  };
+  if (typeof window !== "undefined") {
+    try {
+      if (profile) {
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+      } else {
+        localStorage.removeItem(PROFILE_KEY);
+      }
+    } catch {
+      // Ignore quota errors
+    }
+  }
+  emit();
 }
 
-function loadRegisteredUsers(): AdminAccount[] {
+function readCachedProfile(): UserProfile | null {
+  if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(USERS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return null;
+    const raw = localStorage.getItem(PROFILE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as UserProfile;
   } catch {
-    return [];
+    return null;
   }
 }
 
-function saveRegisteredUsers(users: AdminAccount[]) {
-  try {
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  } catch {
-    // ignore quota
-  }
-}
+export function hydrateAuth(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (hydrated) return Promise.resolve();
+  if (hydratingPromise) return hydratingPromise;
 
-export function findUserById(userId: string): AdminAccount | null {
-  if (userId === DEMO_USER.id) return DEMO_USER;
-  if (userId === DEMO_ADMIN.id) return DEMO_ADMIN;
-  return loadRegisteredUsers().find((u) => u.id === userId) ?? null;
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    hydrated = true;
+    setAuthState(null, true);
+    return Promise.resolve();
+  }
+
+  const cached = readCachedProfile();
+  if (cached) {
+    state = {
+      ready: true,
+      session: toSession(cached),
+      profile: cached,
+    };
+    emit();
+  }
+
+  hydratingPromise = authService
+    .getMe()
+    .then((profile) => {
+      hydrated = true;
+      setAuthState(profile, true);
+    })
+    .catch(() => {
+      hydrated = true;
+      localStorage.removeItem(TOKEN_KEY);
+      setAuthState(null, true);
+    })
+    .finally(() => {
+      hydratingPromise = null;
+    });
+
+  return hydratingPromise;
 }
 
 export function getAuthSnapshot(): AuthState {
-  if (!state) state = load();
   return state;
 }
 
@@ -178,170 +142,101 @@ export function getServerAuthSnapshot(): AuthState {
 
 export function subscribeAuth(listener: () => void) {
   listeners.add(listener);
-  const onStorage = (e: StorageEvent) => {
-    if (e.key === STORAGE_KEY || e.key === USERS_KEY) {
-      state = load();
-      listener();
-    }
-  };
-  window.addEventListener("storage", onStorage);
+  if (typeof window !== "undefined") {
+    const onUnauthorized = () => {
+      hydrated = true;
+      setAuthState(null, true);
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === TOKEN_KEY || e.key === PROFILE_KEY) {
+        const cached = readCachedProfile();
+        setAuthState(cached, true);
+      }
+    };
+    window.addEventListener("kinbo-auth-unauthorized", onUnauthorized);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      listeners.delete(listener);
+      window.removeEventListener("kinbo-auth-unauthorized", onUnauthorized);
+      window.removeEventListener("storage", onStorage);
+    };
+  }
   return () => {
     listeners.delete(listener);
-    window.removeEventListener("storage", onStorage);
   };
 }
 
-export function loginUser(email: string, password: string): ActionResult {
-  const normalized = email.trim().toLowerCase();
-  if (normalized === DEMO_USER.email && password === effectivePassword(DEMO_USER)) {
-    update({ session: { role: "user", userId: DEMO_USER.id } });
-    return { ok: true };
+export async function loginAccount(
+  email: string,
+  password: string
+): Promise<ActionResult<{ user: UserProfile }>> {
+  try {
+    const { token, user } = await authService.login({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+    localStorage.setItem(TOKEN_KEY, token);
+    hydrated = true;
+    setAuthState(user, true);
+    window.dispatchEvent(new Event("kinbo-auth-changed"));
+    return { ok: true, user };
+  } catch (error) {
+    return { ok: false, error: extractApiError(error, "Invalid email or password.") };
   }
-  const match = loadRegisteredUsers().find(
-    (u) => u.email === normalized && effectivePassword(u) === password,
-  );
-  if (!match) return { ok: false, error: "Invalid email or password." };
-  update({ session: { role: "user", userId: match.id } });
-  return { ok: true };
 }
 
-export function loginAdmin(email: string, password: string): ActionResult {
-  const normalized = email.trim().toLowerCase();
-  if (normalized !== DEMO_ADMIN.email || password !== effectivePassword(DEMO_ADMIN)) {
-    return { ok: false, error: "Invalid admin credentials." };
-  }
-  update({ session: { role: "admin", userId: DEMO_ADMIN.id } });
-  return { ok: true };
-}
-
-export function registerUser(
-  fullName: string,
+export async function registerAccount(
+  name: string,
   email: string,
   password: string,
-): ActionResult {
-  const normalized = email.trim().toLowerCase();
-  if (normalized === DEMO_USER.email || normalized === DEMO_ADMIN.email) {
-    return { ok: false, error: "An account with this email already exists." };
+  phone: string
+): Promise<ActionResult<{ user: UserProfile }>> {
+  try {
+    const { token, user } = await authService.register({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      password,
+      phone: phone.trim(),
+    });
+    localStorage.setItem(TOKEN_KEY, token);
+    hydrated = true;
+    setAuthState(user, true);
+    window.dispatchEvent(new Event("kinbo-auth-changed"));
+    return { ok: true, user };
+  } catch (error) {
+    return { ok: false, error: extractApiError(error, "Could not create account.") };
   }
-  const users = loadRegisteredUsers();
-  if (users.some((u) => u.email === normalized)) {
-    return { ok: false, error: "An account with this email already exists." };
-  }
-  const account: AdminAccount = {
-    id: `user-${Date.now()}`,
-    fullName: fullName.trim(),
-    email: normalized,
-    password,
-  };
-  saveRegisteredUsers([...users, account]);
-  update({ session: { role: "user", userId: account.id } });
-  return { ok: true };
 }
 
-/** shortcut: phone OTP mocked as instant login — wire SMS OTP when auth backend exists */
-export function loginWithPhone(phone: string, fullName?: string): ActionResult {
-  const normalized = normalizePhone(phone);
-  const users = loadRegisteredUsers();
-  let match = users.find((u) => u.email === `${normalized}@phone.kinbo`);
-  if (!match) {
-    match = {
-      id: `user-phone-${normalized}`,
-      fullName: fullName?.trim() || `User ${normalized.slice(-4)}`,
-      email: `${normalized}@phone.kinbo`,
-      password: "",
-    };
-    saveRegisteredUsers([...users, match]);
-  } else if (fullName?.trim()) {
-    match = { ...match, fullName: fullName.trim() };
-    saveRegisteredUsers(users.map((u) => (u.id === match!.id ? match! : u)));
+export async function refreshCurrentUser(): Promise<UserProfile | null> {
+  if (typeof window === "undefined") return null;
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    setAuthState(null, true);
+    return null;
   }
-  update({ session: { role: "user", userId: match.id } });
-  return { ok: true };
+  try {
+    const profile = await authService.getMe();
+    setAuthState(profile, true);
+    return profile;
+  } catch {
+    localStorage.removeItem(TOKEN_KEY);
+    setAuthState(null, true);
+    return null;
+  }
 }
 
-/** shortcut: mock Google only — wire real OAuth when auth backend exists */
-export function loginWithGoogle(): ActionResult {
-  const users = loadRegisteredUsers();
-  let google = users.find((u) => u.email === "google@kinbo.com");
-  if (!google) {
-    google = {
-      id: "user-google",
-      fullName: "Google User",
-      email: "google@kinbo.com",
-      password: "",
-    };
-    saveRegisteredUsers([...users, google]);
-  }
-  update({ session: { role: "user", userId: google.id } });
-  return { ok: true };
+export function setCurrentUserProfile(profile: UserProfile) {
+  hydrated = true;
+  setAuthState(profile, true);
 }
 
 export function logout() {
-  update({ session: null });
-}
-
-export function resetDemoData() {
-  setState(freshState());
-}
-
-/**
- * Mock forgot-password: creates a reset token (no real email).
- * shortcut: show token on success UI until Nodemailer backend exists
- */
-export function requestPasswordReset(
-  email: string
-): ActionResult<{ token: string; resetPath: string }> {
-  const normalized = email.trim().toLowerCase();
-  const known =
-    normalized === DEMO_USER.email ||
-    normalized === DEMO_ADMIN.email ||
-    loadRegisteredUsers().some((u) => u.email === normalized);
-
-  if (!known) {
-    // Same response shape as success to avoid email enumeration in real apps;
-    // for this demo we still tell the user if unknown so testing is easier.
-    return { ok: false, error: "No account found with that email." };
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(PROFILE_KEY);
+    window.dispatchEvent(new Event("kinbo-auth-changed"));
   }
-
-  const token = `rst-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-  const expiresAt = Date.now() + 1000 * 60 * 30; // 30 minutes
-  const tokens = loadResetTokens().filter((t) => t.email !== normalized && t.expiresAt > Date.now());
-  tokens.push({ email: normalized, token, expiresAt });
-  saveResetTokens(tokens);
-
-  return {
-    ok: true,
-    token,
-    resetPath: `/reset-password?token=${encodeURIComponent(token)}`,
-  };
-}
-
-export function findResetToken(token: string): ResetTokenRecord | null {
-  const match = loadResetTokens().find((t) => t.token === token);
-  if (!match) return null;
-  if (match.expiresAt < Date.now()) return null;
-  return match;
-}
-
-export function resetPasswordWithToken(token: string, password: string): ActionResult {
-  const record = findResetToken(token);
-  if (!record) return { ok: false, error: "This reset link is invalid or has expired." };
-
-  const users = loadRegisteredUsers();
-  const userIndex = users.findIndex((u) => u.email === record.email);
-
-  if (userIndex >= 0) {
-    const next = [...users];
-    next[userIndex] = { ...next[userIndex], password };
-    saveRegisteredUsers(next);
-  } else if (record.email === DEMO_USER.email || record.email === DEMO_ADMIN.email) {
-    const overrides = loadPasswordOverrides();
-    overrides[record.email] = password;
-    savePasswordOverrides(overrides);
-  } else {
-    return { ok: false, error: "Account no longer exists." };
-  }
-
-  saveResetTokens(loadResetTokens().filter((t) => t.token !== token));
-  return { ok: true };
+  hydrated = true;
+  setAuthState(null, true);
 }

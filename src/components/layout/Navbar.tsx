@@ -3,10 +3,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/hooks/use-cart";
 import { useAuth } from "@/hooks/use-auth";
+import { useNotifications } from "@/hooks/use-notifications";
 import { logout } from "@/lib/auth/auth-store";
+import { useQueryClient } from "@tanstack/react-query";
 import { useIsClient } from "@/hooks/use-is-client";
 import { useT } from "@/hooks/use-t";
 import LanguageSwitcher from "@/components/common/LanguageSwitcher";
@@ -35,17 +37,19 @@ const menuItemClass =
 export default function Navbar({ onSearchChange }: NavbarProps) {
   const t = useT();
   const router = useRouter();
-  const pathname = usePathname();
   const { totalItems, setIsCartOpen } = useCart();
   const { user, admin } = useAuth();
+  const { unreadCount } = useNotifications();
+  const queryClient = useQueryClient();
   const [searchInput, setSearchInput] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
   const isClient = useIsClient();
+  const isAdmin = isClient && Boolean(admin);
   const signedIn = isClient && Boolean(user || admin);
-  const dashboardHref = isClient && admin ? "/admin/dashboard" : "/account";
-  const onProductsListing = pathname === "/products";
+  const dashboardHref = isAdmin ? "/admin/dashboard" : "/account";
+  const notificationsHref = isAdmin ? "/admin/notifications" : "/inbox";
 
   useEffect(() => {
     if (!accountOpen) return;
@@ -61,7 +65,7 @@ export default function Navbar({ onSearchChange }: NavbarProps) {
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [accountOpen]);
+  }, [accountOpen, setAccountOpen]);
 
   useEffect(() => {
     if (!isMobileMenuOpen) return;
@@ -75,7 +79,7 @@ export default function Navbar({ onSearchChange }: NavbarProps) {
       document.body.style.overflow = prev;
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [isMobileMenuOpen]);
+  }, [isMobileMenuOpen, setIsMobileMenuOpen]);
 
   useEffect(() => {
     const onResize = () => {
@@ -85,16 +89,11 @@ export default function Navbar({ onSearchChange }: NavbarProps) {
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, []);
-
-  useEffect(() => {
-    setIsMobileMenuOpen(false);
-    setAccountOpen(false);
-  }, [pathname]);
+  }, [setIsMobileMenuOpen]);
 
   const runSearch = (value: string) => {
     const query = value.trim();
-    if (onSearchChange && onProductsListing) {
+    if (onSearchChange && window.location.pathname === "/products") {
       onSearchChange(query);
       return;
     }
@@ -140,7 +139,9 @@ export default function Navbar({ onSearchChange }: NavbarProps) {
                 value={searchInput}
                 onChange={(e) => {
                   setSearchInput(e.target.value);
-                  if (onSearchChange && onProductsListing) onSearchChange(e.target.value);
+                  if (onSearchChange && window.location.pathname === "/products") {
+                    onSearchChange(e.target.value);
+                  }
                 }}
                 className="w-full rounded-full border border-[#E5E7EB] bg-[#F3F7FC] py-2.5 ps-10 pe-4 text-sm text-[#1F2937] placeholder:text-zinc-400 shadow-2xs outline-none focus:border-[#082F6B] focus:ring-2 focus:ring-[#082F6B]/20"
               />
@@ -193,6 +194,7 @@ export default function Navbar({ onSearchChange }: NavbarProps) {
                       role="menuitem"
                       onClick={() => {
                         logout();
+                        queryClient.clear();
                         closeMenus();
                       }}
                       className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-xs font-semibold text-[#1F2937] hover:bg-[#F3F7FC]"
@@ -215,38 +217,47 @@ export default function Navbar({ onSearchChange }: NavbarProps) {
 
             {signedIn && (
               <>
+                {!isAdmin && (
+                  <Link
+                    href="/orders"
+                    className="hidden items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-[#1F2937] transition hover:bg-[#F3F7FC] hover:text-[#082F6B] lg:inline-flex"
+                  >
+                    <Package className="h-4 w-4 text-[#082F6B]" />
+                    <span>{t("nav.orders")}</span>
+                  </Link>
+                )}
                 <Link
-                  href="/orders"
-                  className="hidden items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-[#1F2937] transition hover:bg-[#F3F7FC] hover:text-[#082F6B] lg:inline-flex"
-                >
-                  <Package className="h-4 w-4 text-[#082F6B]" />
-                  <span>{t("nav.orders")}</span>
-                </Link>
-                <Link
-                  href="/inbox"
+                  href={notificationsHref}
                   aria-label={t("nav.notifications")}
-                  className="hidden items-center justify-center rounded-lg p-2 text-[#082F6B] transition hover:bg-[#F3F7FC] sm:inline-flex"
+                  className="relative hidden items-center justify-center rounded-lg p-2 text-[#082F6B] transition hover:bg-[#F3F7FC] sm:inline-flex"
                 >
                   <Bell className="h-5 w-5" />
+                  {isClient && unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -end-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF6B00] px-1 text-[9px] font-bold text-white ring-2 ring-white">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
                 </Link>
               </>
             )}
 
-            <button
-              type="button"
-              onClick={() => setIsCartOpen(true)}
-              className="inline-flex cursor-pointer items-center justify-center rounded-xl p-2.5 transition hover:bg-[#F3F7FC]"
-              aria-label={t("nav.cart")}
-            >
-              <span className="relative inline-flex">
-                <ShoppingCart className="h-6 w-6 text-[#082F6B]" strokeWidth={2} />
-                {isClient && (
-                  <span className="absolute -top-1.5 -end-2 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-[#FF6B00] px-1 text-[10px] font-bold text-white ring-2 ring-white shadow-xs">
-                    {totalItems}
-                  </span>
-                )}
-              </span>
-            </button>
+            {!isAdmin && (
+              <button
+                type="button"
+                onClick={() => setIsCartOpen(true)}
+                className="inline-flex cursor-pointer items-center justify-center rounded-xl p-2.5 transition hover:bg-[#F3F7FC]"
+                aria-label={t("nav.cart")}
+              >
+                <span className="relative inline-flex">
+                  <ShoppingCart className="h-6 w-6 text-[#082F6B]" strokeWidth={2} />
+                  {isClient && (
+                    <span className="absolute -top-1.5 -end-2 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-[#FF6B00] px-1 text-[10px] font-bold text-white ring-2 ring-white shadow-xs">
+                      {totalItems}
+                    </span>
+                  )}
+                </span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -272,7 +283,9 @@ export default function Navbar({ onSearchChange }: NavbarProps) {
               value={searchInput}
               onChange={(e) => {
                 setSearchInput(e.target.value);
-                if (onSearchChange && onProductsListing) onSearchChange(e.target.value);
+                if (onSearchChange && window.location.pathname === "/products") {
+                  onSearchChange(e.target.value);
+                }
               }}
               className="w-full rounded-xl border border-[#E5E7EB] bg-[#F3F7FC] py-2.5 ps-10 pe-4 text-sm text-[#1F2937] placeholder:text-zinc-400 outline-none focus:border-[#082F6B]"
             />
@@ -301,15 +314,19 @@ export default function Navbar({ onSearchChange }: NavbarProps) {
                     <LayoutDashboard className="h-4 w-4 text-[#082F6B]" />
                     <span>{t("nav.dashboard")}</span>
                   </Link>
-                  <Link href="/account" onClick={closeMenus} className={menuItemClass}>
-                    <User className="h-4 w-4 text-[#082F6B]" />
-                    <span>{t("nav.account")}</span>
-                  </Link>
-                  <Link href="/orders" onClick={closeMenus} className={menuItemClass}>
-                    <Package className="h-4 w-4 text-[#082F6B]" />
-                    <span>{t("nav.orders")}</span>
-                  </Link>
-                  <Link href="/inbox" onClick={closeMenus} className={menuItemClass}>
+                  {!isAdmin && (
+                    <>
+                      <Link href="/account" onClick={closeMenus} className={menuItemClass}>
+                        <User className="h-4 w-4 text-[#082F6B]" />
+                        <span>{t("nav.account")}</span>
+                      </Link>
+                      <Link href="/orders" onClick={closeMenus} className={menuItemClass}>
+                        <Package className="h-4 w-4 text-[#082F6B]" />
+                        <span>{t("nav.orders")}</span>
+                      </Link>
+                    </>
+                  )}
+                  <Link href={notificationsHref} onClick={closeMenus} className={menuItemClass}>
                     <Bell className="h-4 w-4 text-[#082F6B]" />
                     <span>{t("nav.notifications")}</span>
                   </Link>
@@ -317,6 +334,7 @@ export default function Navbar({ onSearchChange }: NavbarProps) {
                     type="button"
                     onClick={() => {
                       logout();
+                      queryClient.clear();
                       closeMenus();
                     }}
                     className={`${menuItemClass} cursor-pointer`}
@@ -332,10 +350,12 @@ export default function Navbar({ onSearchChange }: NavbarProps) {
                 </Link>
               )}
 
-              <Link href="/cart" onClick={closeMenus} className={menuItemClass}>
-                <ShoppingCart className="h-4 w-4 text-[#082F6B]" />
-                <span>{t("nav.viewCart")}</span>
-              </Link>
+              {!isAdmin && (
+                <Link href="/cart" onClick={closeMenus} className={menuItemClass}>
+                  <ShoppingCart className="h-4 w-4 text-[#082F6B]" />
+                  <span>{t("nav.viewCart")}</span>
+                </Link>
+              )}
             </nav>
           </div>
         </div>

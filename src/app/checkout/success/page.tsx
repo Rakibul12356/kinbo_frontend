@@ -4,6 +4,7 @@ import React, { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import PageLayout from "@/components/layout/PageLayout";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { CheckCircle2, ShoppingBag } from "lucide-react";
 
 function SuccessContent() {
@@ -61,9 +62,7 @@ export default function CheckoutSuccessPage() {
     <PageLayout>
       <main className="flex-1 container mx-auto px-4 sm:px-6 py-16 flex items-center justify-center">
         <Suspense
-          fallback={
-            <div className="text-sm text-zinc-500">Loading confirmation…</div>
-          }
+          fallback={<LoadingSpinner label="Loading confirmation..." />}
         >
           <SuccessContent />
         </Suspense>

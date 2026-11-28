@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useEffect, useMemo, useState } from "react";
+import React, { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import PageLayout from "@/components/layout/PageLayout";
 import Breadcrumbs, { type BreadcrumbItem } from "@/components/common/Breadcrumbs";
@@ -71,18 +71,21 @@ function ProductListingContent({
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q")?.trim() ?? "";
 
-  const [searchQuery, setSearchQuery] = useState(initialQuery);
+  const [searchDraft, setSearchDraft] = useState<{ query: string; base: string } | null>(null);
+  const searchQuery =
+    searchDraft && searchDraft.base === initialQuery ? searchDraft.query : initialQuery;
   const [sortBy, setSortBy] = useState("featured");
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTER_STATE);
   const [page, setPage] = useState(1);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
-  useEffect(() => {
-    const next = searchParams.get("q")?.trim() ?? "";
-    setSearchQuery(next);
-  }, [searchParams]);
-
-  const { data: products = [], isLoading } = useProducts({
+  const {
+    data: products = [],
+    isLoading,
+    isError,
+    refetch,
+    isFetching,
+  } = useProducts({
     ...query,
     search: searchQuery || undefined,
   });
@@ -103,20 +106,14 @@ function ProductListingContent({
     currentPage * PAGE_SIZE
   );
 
-  useEffect(() => {
-    setPage(1);
-  }, [searchQuery, sortBy, filters]);
-
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
-
   const handleFiltersChange = (next: FilterState) => {
     setFilters(next);
+    setPage(1);
   };
 
   const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
+    setSearchDraft({ query: value, base: initialQuery });
+    setPage(1);
   };
 
   const rangeStart = visibleProducts.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
@@ -172,7 +169,10 @@ function ProductListingContent({
                   <ArrowUpDown className="hidden sm:block w-4 h-4 text-zinc-500" />
                   <select
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
+                    onChange={(e) => {
+                      setSortBy(e.target.value);
+                      setPage(1);
+                    }}
                     aria-label="Sort products"
                     className="text-sm bg-white border border-[#E5E7EB] rounded-xl px-3 py-2 text-[#1F2937] outline-none focus:border-[#082F6B] cursor-pointer"
                   >
@@ -185,9 +185,26 @@ function ProductListingContent({
               </div>
             </div>
 
-            <ProductGrid products={pagedProducts} isLoading={isLoading} />
+            {isError ? (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-12 text-center">
+                <p className="text-sm font-bold text-rose-800">Could not load products</p>
+                <p className="mt-1 text-xs text-rose-600">
+                  Check that the API is reachable, then try again.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => refetch()}
+                  disabled={isFetching}
+                  className="mt-4 inline-flex rounded-xl bg-[#082F6B] px-4 py-2 text-xs font-semibold text-white hover:bg-[#062452] disabled:opacity-60 cursor-pointer"
+                >
+                  {isFetching ? "Retrying…" : "Retry"}
+                </button>
+              </div>
+            ) : (
+              <ProductGrid products={pagedProducts} isLoading={isLoading} />
+            )}
 
-            {!isLoading && visibleProducts.length > PAGE_SIZE && (
+            {!isLoading && !isError && visibleProducts.length > PAGE_SIZE && (
               <div className="flex items-center justify-center gap-1.5 pt-2">
                 <button
                   type="button"

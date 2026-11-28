@@ -1,79 +1,81 @@
-import type { StoreOrder } from "@/lib/orders/order-store";
+import type { OrderDetail, OrderStatus, OrderStatusHistoryEntry } from "@/types/ecommerce";
 
 export interface TimelineStep {
-  key: string;
+  key: OrderStatus;
   title: string;
   description: string;
 }
 
 const STEPS: TimelineStep[] = [
   {
-    key: "placed",
+    key: "PENDING",
     title: "Order Placed",
     description: "Your order was successfully placed.",
   },
   {
-    key: "processing",
+    key: "PROCESSING",
     title: "Processing",
-    description: "We received your order and are checking it.",
+    description: "We received your order and are verifying it.",
   },
   {
-    key: "confirmed",
+    key: "CONFIRMED",
     title: "Confirmed",
-    description: "We have confirmed your order.",
+    description: "We have confirmed your order and reserved stock.",
   },
   {
-    key: "packing",
+    key: "PACKING",
     title: "Packing",
     description: "We are currently packing your order.",
   },
   {
-    key: "packed",
+    key: "PACKED",
     title: "Packed",
-    description: "Your order is packed now.",
+    description: "Your order is packed and ready for dispatch.",
   },
   {
-    key: "delivering",
+    key: "DELIVERING",
     title: "Delivering",
     description: "Your order is out for delivery.",
   },
   {
-    key: "delivered",
+    key: "DELIVERED",
     title: "Delivered",
     description: "You have received your order.",
   },
 ];
 
-/** How far along the timeline based on order status. */
-export function timelineCompletedIndex(status: StoreOrder["status"]): number {
-  switch (status) {
-    case "pending":
-      return 1;
-    case "confirmed":
-      return 2;
-    case "shipped":
-      return 5;
-    case "delivered":
-      return 6;
-    case "cancelled":
-    case "returned":
-      return -1;
-    default:
-      return 0;
-  }
+const PIPELINE_ORDER: OrderStatus[] = [
+  "PENDING",
+  "PROCESSING",
+  "CONFIRMED",
+  "PACKING",
+  "PACKED",
+  "DELIVERING",
+  "DELIVERED",
+];
+
+export function timelineCompletedIndex(status: OrderStatus): number {
+  const idx = PIPELINE_ORDER.indexOf(status);
+  return idx;
 }
 
-export function buildOrderTimeline(order: StoreOrder) {
+export function buildOrderTimeline(order: OrderDetail) {
   const completedThrough = timelineCompletedIndex(order.status);
-  const start = +new Date(order.createdAt);
+  const historyMap = new Map<OrderStatus, OrderStatusHistoryEntry>();
+  for (const entry of order.statusHistory ?? []) {
+    historyMap.set(entry.status, entry);
+  }
 
   return STEPS.map((step, index) => {
-    const done = completedThrough >= 0 && index <= completedThrough;
-    const at = new Date(start + index * 45 * 60 * 1000);
+    const historyEntry = historyMap.get(step.key);
+    const done =
+      Boolean(historyEntry) ||
+      (completedThrough >= 0 && index <= completedThrough);
     return {
       ...step,
+      description: historyEntry?.note || step.description,
       done,
-      at: done || index === completedThrough + 1 ? at : null,
+      at: historyEntry?.createdAt ? new Date(historyEntry.createdAt) : null,
       current: completedThrough >= 0 && index === completedThrough,
     };
   });

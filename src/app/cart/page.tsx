@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import PageLayout from "@/components/layout/PageLayout";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useCart } from "@/hooks/use-cart";
 import { formatPrice } from "@/lib/utils";
 import {
@@ -16,17 +17,11 @@ import {
 } from "lucide-react";
 
 export default function CartPage() {
-  const { cart, removeFromCart, updateQuantity, subtotal, clearCart } = useCart();
-
-  const shipping = subtotal > 50 || subtotal === 0 ? 0 : 5.0;
-  const tax = subtotal * 0.05; // 5% standard tax
-  const total = subtotal + shipping + tax;
+  const { cart, removeFromCart, updateQuantity, subtotal, clearCart, ready } = useCart();
 
   return (
     <PageLayout>
-
       <main className="flex-1 container mx-auto px-4 sm:px-6 py-10">
-        {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-xs text-zinc-500 mb-6">
           <Link href="/" className="hover:text-[#082F6B]">
             Home
@@ -54,7 +49,9 @@ export default function CartPage() {
           )}
         </div>
 
-        {cart.length === 0 ? (
+        {!ready ? (
+          <LoadingSpinner label="Loading cart..." />
+        ) : cart.length === 0 ? (
           <div className="bg-white rounded-2xl border border-[#E5E7EB] p-12 text-center max-w-lg mx-auto shadow-xs">
             <div className="w-20 h-20 rounded-full bg-[#082F6B]/10 flex items-center justify-center mx-auto mb-4 text-[#082F6B]">
               <ShoppingBag className="w-10 h-10" />
@@ -75,7 +72,6 @@ export default function CartPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Items List */}
             <div className="lg:col-span-2 space-y-4">
               {cart.map((item) => (
                 <div
@@ -85,7 +81,7 @@ export default function CartPage() {
                   <div className="flex items-center gap-4">
                     <div className="w-20 h-20 rounded-xl bg-zinc-100 overflow-hidden flex-shrink-0">
                       <img
-                        src={item.product.images[0]}
+                        src={item.product.images[0] || "/images/logo.png"}
                         alt={item.product.name}
                         className="w-full h-full object-cover"
                       />
@@ -97,9 +93,11 @@ export default function CartPage() {
                       >
                         {item.product.name}
                       </Link>
-                      <span className="text-xs text-zinc-400 block mt-0.5">
-                        {item.product.category}
-                      </span>
+                      {item.product.category && (
+                        <span className="text-xs text-zinc-400 block mt-0.5">
+                          {item.product.category}
+                        </span>
+                      )}
                       <span className="text-sm font-semibold text-[#082F6B] block mt-1">
                         {formatPrice(item.product.price)} each
                       </span>
@@ -146,7 +144,6 @@ export default function CartPage() {
               ))}
             </div>
 
-            {/* Order Summary */}
             <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 shadow-xs h-fit space-y-4">
               <h2 className="text-lg font-bold text-[#1F2937]">Order Summary</h2>
 
@@ -158,18 +155,20 @@ export default function CartPage() {
                   </span>
                 </div>
                 <div className="flex justify-between text-zinc-600">
-                  <span>Estimated Shipping</span>
-                  <span>{shipping === 0 ? "Free" : formatPrice(shipping)}</span>
+                  <span>Delivery Charge</span>
+                  <span className="text-xs text-zinc-500">
+                    ৳70 Dhaka / ৳120 Outside
+                  </span>
                 </div>
                 <div className="flex justify-between text-zinc-600">
-                  <span>Estimated Tax (5%)</span>
-                  <span>{formatPrice(tax)}</span>
+                  <span>Payment</span>
+                  <span className="font-semibold text-[#082F6B]">Cash on Delivery</span>
                 </div>
               </div>
 
               <div className="flex justify-between text-lg font-extrabold text-[#1F2937]">
-                <span>Total</span>
-                <span className="text-[#082F6B]">{formatPrice(total)}</span>
+                <span>Subtotal</span>
+                <span className="text-[#082F6B]">{formatPrice(subtotal)}</span>
               </div>
 
               <Link
@@ -182,7 +181,7 @@ export default function CartPage() {
 
               <div className="flex items-center gap-2 text-xs text-zinc-400 justify-center pt-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>256-Bit SSL Encrypted Checkout</span>
+                <span>100% Cash on Delivery · Free delivery on first order</span>
               </div>
             </div>
           </div>
