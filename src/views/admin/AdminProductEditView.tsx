@@ -4,10 +4,11 @@ import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ImagePlus, Pencil } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import { toast } from "react-toastify";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
+import { MultiImageUpload } from "@/components/ui/MediaUpload";
 import RouteGuard from "@/components/auth/RouteGuard";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useProduct } from "@/hooks/use-products";
@@ -27,7 +28,6 @@ interface ProductForm {
   subcategoryId: string;
   brand: string;
   stock: string;
-  imageUrl: string;
   isFeatured: boolean;
 }
 
@@ -57,9 +57,10 @@ function EditProductForm({
     subcategoryId: matchedSub?.id ?? "",
     brand: product.brand ?? "",
     stock: String(product.stock),
-    imageUrl: product.images[0] ?? "",
     isFeatured: Boolean(product.isFeatured),
   });
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imageUrlList, setImageUrlList] = useState("");
   const [errors, setErrors] = useState<Partial<Record<keyof ProductForm, string>>>({});
   const [saving, setSaving] = useState(false);
 
@@ -106,8 +107,12 @@ function EditProductForm({
         subcategoryId: form.subcategoryId || undefined,
         brand: form.brand.trim() || undefined,
         isFeatured: form.isFeatured,
-        images: form.imageUrl.trim()
-          ? [{ url: form.imageUrl.trim(), isPrimary: true }]
+        imageFiles: imageFiles.length > 0 ? imageFiles : undefined,
+        imageUrls: imageUrlList.trim()
+          ? imageUrlList
+              .split(/[\n,]+/)
+              .map((s) => s.trim())
+              .filter(Boolean)
           : undefined,
       });
       await queryClient.invalidateQueries({ queryKey: ["products"] });
@@ -240,12 +245,12 @@ function EditProductForm({
           />
         </div>
 
-        <Input
-          label="Primary Image URL"
-          value={form.imageUrl}
-          onChange={(event) => setField("imageUrl", event.target.value)}
-          placeholder="https://..."
-          leftIcon={<ImagePlus className="h-4 w-4" />}
+        <MultiImageUpload
+          files={imageFiles}
+          onFilesChange={setImageFiles}
+          urlList={imageUrlList}
+          onUrlListChange={setImageUrlList}
+          existingUrls={product.images}
         />
 
         <label className="flex cursor-pointer items-center gap-2 text-sm text-[#1F2937]">

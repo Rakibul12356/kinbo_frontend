@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 import { CartItem, Product } from "@/types/ecommerce";
 import { useAuth } from "@/hooks/use-auth";
 import { cartService } from "@/services/cart.service";
-import { extractApiError } from "@/lib/axios";
+import { extractApiError, resolveAssetUrl } from "@/lib/axios";
 
 interface CartContextType {
   cart: CartItem[];
@@ -42,12 +42,22 @@ function CartToast({
   );
 }
 
+function normalizeCartItemImages(items: CartItem[]): CartItem[] {
+  return items.map((item) => ({
+    ...item,
+    product: {
+      ...item.product,
+      images: (item.product.images ?? []).map((src) => resolveAssetUrl(src)).filter(Boolean),
+    },
+  }));
+}
+
 function readGuestCart(): CartItem[] {
   try {
     const raw = localStorage.getItem(GUEST_CART_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as CartItem[]) : [];
+    return Array.isArray(parsed) ? normalizeCartItemImages(parsed as CartItem[]) : [];
   } catch {
     return [];
   }
@@ -63,7 +73,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const syncFromServer = useCallback(async () => {
     try {
       const serverCart = await cartService.getCart();
-      setCart(serverCart.items);
+      setCart((prev) => {
+        const next = serverCart.items;
+        // Preserve known-good https images when API returns empty/broken paths.
+        return next.map((item) => {
+          const apiImg = item.product.images?.[0];
+          const prevImg = prev.find((p) => p.product.id === item.product.id)?.product
+            .images?.[0];
+          const apiOk = Boolean(apiImg && /^https?:\/\//i.test(apiImg));
+          if (apiOk || !prevImg) return item;
+          return {
+            ...item,
+            product: { ...item.product, images: [prevImg] },
+          };
+        });
+      });
     } catch {
       // Keep current state if transient network error
     }
@@ -150,6 +174,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       try {
         await cartService.addItem(product.id, quantity);
         await syncFromServer();
+        // Cart API image field is often missing or a dead /uploads path — keep card image.
+        const preview = product.images?.[0];
+        if (preview) {
+          setCart((prev) =>
+            prev.map((item) =>
+              item.product.id === product.id
+                ? {
+                    ...item,
+                    product: {
+                      ...item.product,
+                      images: [preview],
+                    },
+                  }
+                : item
+            )
+          );
+        }
         showCartToast(
           product.name,
           alreadyInCart ? "Quantity updated in cart" : "Added to cart",

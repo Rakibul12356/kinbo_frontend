@@ -20,7 +20,7 @@ export interface ProductFilterParams {
 
 export interface CreateProductPayload {
   name: string;
-  slug: string;
+  slug?: string;
   description: string;
   price: number;
   discountPercent?: number;
@@ -29,7 +29,45 @@ export interface CreateProductPayload {
   subcategoryId?: string;
   brand?: string;
   isFeatured?: boolean;
-  images: Array<{ url: string; isPrimary: boolean }>;
+  /** Legacy JSON shape — prefer imageFiles / imageUrls. */
+  images?: Array<{ url: string; isPrimary: boolean }>;
+  /** Local files for multipart upload (field name: images). Max 5. */
+  imageFiles?: File[];
+  /** External CDN/URLs when no files are uploaded. */
+  imageUrls?: string[];
+}
+
+function parseImageUrlList(raw?: string | string[]): string[] {
+  if (!raw) return [];
+  const list = Array.isArray(raw)
+    ? raw
+    : raw
+        .split(/[\n,]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+  return list.slice(0, 5);
+}
+
+function buildProductFormData(payload: CreateProductPayload | Partial<CreateProductPayload>) {
+  const formData = new FormData();
+  if (payload.name !== undefined) formData.append("name", payload.name);
+  if (payload.slug) formData.append("slug", payload.slug);
+  if (payload.description !== undefined) formData.append("description", payload.description);
+  if (payload.price !== undefined) formData.append("price", String(payload.price));
+  if (payload.discountPercent !== undefined) {
+    formData.append("discountPercent", String(payload.discountPercent));
+  }
+  if (payload.stock !== undefined) formData.append("stock", String(payload.stock));
+  if (payload.categoryId) formData.append("categoryId", payload.categoryId);
+  if (payload.subcategoryId) formData.append("subcategoryId", payload.subcategoryId);
+  if (payload.brand !== undefined) formData.append("brand", payload.brand);
+  if (payload.isFeatured !== undefined) {
+    formData.append("isFeatured", payload.isFeatured ? "true" : "false");
+  }
+  for (const file of payload.imageFiles ?? []) {
+    formData.append("images", file);
+  }
+  return formData;
 }
 
 interface RawProductImage {
@@ -240,22 +278,59 @@ export const productService = {
     name: string;
     slug: string;
     image?: string;
+    imageFile?: File | null;
     description?: string;
   }): Promise<CategoryItem> {
-    const response = await apiClient.post<ApiResponse<CategoryItem>>(
-      "/categories",
-      payload
-    );
+    if (payload.imageFile) {
+      const formData = new FormData();
+      formData.append("name", payload.name);
+      formData.append("slug", payload.slug);
+      if (payload.description) formData.append("description", payload.description);
+      formData.append("image", payload.imageFile);
+      const response = await apiClient.post<ApiResponse<CategoryItem>>(
+        "/categories",
+        formData
+      );
+      return mapCategory(response.data.data);
+    }
+    const response = await apiClient.post<ApiResponse<CategoryItem>>("/categories", {
+      name: payload.name,
+      slug: payload.slug,
+      description: payload.description,
+      image: payload.image,
+    });
     return mapCategory(response.data.data);
   },
 
   async updateCategory(
     id: string,
-    payload: { name?: string; description?: string; image?: string }
+    payload: {
+      name?: string;
+      description?: string;
+      image?: string;
+      imageFile?: File | null;
+    }
   ): Promise<CategoryItem> {
+    if (payload.imageFile) {
+      const formData = new FormData();
+      if (payload.name !== undefined) formData.append("name", payload.name);
+      if (payload.description !== undefined) {
+        formData.append("description", payload.description);
+      }
+      formData.append("image", payload.imageFile);
+      const response = await apiClient.put<ApiResponse<CategoryItem>>(
+        `/categories/${encodeURIComponent(id)}`,
+        formData
+      );
+      return mapCategory(response.data.data);
+    }
     const response = await apiClient.put<ApiResponse<CategoryItem>>(
       `/categories/${encodeURIComponent(id)}`,
-      payload
+      {
+        name: payload.name,
+        description: payload.description,
+        image: payload.image,
+      }
     );
     return mapCategory(response.data.data);
   },
@@ -277,9 +352,36 @@ export const productService = {
   },
 
   async createProduct(payload: CreateProductPayload): Promise<Product> {
+    const files = payload.imageFiles ?? [];
+    const urls =
+      payload.imageUrls ??
+      payload.images?.map((img) => img.url).filter(Boolean) ??
+      [];
+
+    if (files.length > 0) {
+      const formData = buildProductFormData(payload);
+      const response = await apiClient.post<ApiResponse<RawApiProduct>>(
+        "/admin/products",
+        formData
+      );
+      return mapApiProduct(response.data.data);
+    }
+
     const response = await apiClient.post<ApiResponse<RawApiProduct>>(
       "/admin/products",
-      payload
+      {
+        name: payload.name,
+        slug: payload.slug,
+        description: payload.description,
+        price: payload.price,
+        discountPercent: payload.discountPercent,
+        stock: payload.stock,
+        categoryId: payload.categoryId,
+        subcategoryId: payload.subcategoryId,
+        brand: payload.brand,
+        isFeatured: payload.isFeatured,
+        imageUrls: parseImageUrlList(urls),
+      }
     );
     return mapApiProduct(response.data.data);
   },
@@ -288,9 +390,38 @@ export const productService = {
     id: string,
     payload: Partial<CreateProductPayload>
   ): Promise<Product> {
+    const files = payload.imageFiles ?? [];
+    const urls =
+      payload.imageUrls ??
+      payload.images?.map((img) => img.url).filter(Boolean) ??
+      [];
+
+    if (files.length > 0) {
+      const formData = buildProductFormData(payload);
+      const response = await apiClient.put<ApiResponse<RawApiProduct>>(
+        `/admin/products/${encodeURIComponent(id)}`,
+        formData
+      );
+      return mapApiProduct(response.data.data);
+    }
+
+    const body: Record<string, unknown> = {
+      name: payload.name,
+      description: payload.description,
+      price: payload.price,
+      discountPercent: payload.discountPercent,
+      stock: payload.stock,
+      categoryId: payload.categoryId,
+      subcategoryId: payload.subcategoryId,
+      brand: payload.brand,
+      isFeatured: payload.isFeatured,
+    };
+    const parsedUrls = parseImageUrlList(urls);
+    if (parsedUrls.length > 0) body.imageUrls = parsedUrls;
+
     const response = await apiClient.put<ApiResponse<RawApiProduct>>(
       `/admin/products/${encodeURIComponent(id)}`,
-      payload
+      body
     );
     return mapApiProduct(response.data.data);
   },

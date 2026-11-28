@@ -16,12 +16,16 @@ const nextConfig: NextConfig = {
       },
     },
   },
-  // Browser → same-origin /api/v1 → Render backend (avoids CORS blocking product list).
+  // Browser → same-origin proxy → Render backend (avoids CORS).
   async rewrites() {
     return [
       {
         source: "/api/v1/:path*",
         destination: `${BACKEND_URL}/api/v1/:path*`,
+      },
+      {
+        source: "/uploads/:path*",
+        destination: `${BACKEND_URL}/uploads/:path*`,
       },
     ];
   },

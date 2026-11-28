@@ -30,7 +30,8 @@ export function resolveAssetUrl(path?: unknown): string {
   ) {
     return str;
   }
-  if (str.startsWith("/uploads")) {
+  // Relative paths (/uploads/...) → absolute static host (img tags work cross-origin).
+  if (str.startsWith("/")) {
     return `${STATIC_BASE_URL}${str}`;
   }
   return str;
@@ -68,6 +69,14 @@ apiClient.interceptors.request.use(
       const token = localStorage.getItem("token");
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    // Let the browser set multipart boundary for FormData uploads.
+    if (typeof FormData !== "undefined" && config.data instanceof FormData && config.headers) {
+      if (typeof config.headers.delete === "function") {
+        config.headers.delete("Content-Type");
+      } else {
+        delete (config.headers as Record<string, unknown>)["Content-Type"];
       }
     }
     return config;

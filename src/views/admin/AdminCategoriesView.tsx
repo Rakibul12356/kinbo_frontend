@@ -7,6 +7,7 @@ import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
+import { SingleImageUpload } from "@/components/ui/MediaUpload";
 import RouteGuard from "@/components/auth/RouteGuard";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useManagedCategories } from "@/hooks/use-categories";
@@ -89,6 +90,7 @@ function CategoriesContent() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [image, setImage] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   const selected = categories.find((c) => c.id === selectedId) ?? categories[0] ?? null;
@@ -99,14 +101,17 @@ function CategoriesContent() {
       setName("");
       setDescription("");
       setImage("");
+      setImageFile(null);
     } else if (mode.type === "category-edit") {
       setName(mode.category.name);
       setDescription(mode.category.description || "");
       setImage(mode.category.image || "");
+      setImageFile(null);
     } else {
       setName("");
       setDescription("");
       setImage("");
+      setImageFile(null);
     }
     setModal(mode);
   };
@@ -135,7 +140,8 @@ function CategoriesContent() {
           name: trimmed,
           slug: slugify(trimmed),
           description: description.trim() || undefined,
-          image: image.trim() || undefined,
+          image: imageFile ? undefined : image.trim() || undefined,
+          imageFile,
         });
         await refreshCategories();
         setSelectedId(created.id);
@@ -144,7 +150,8 @@ function CategoriesContent() {
         await productService.updateCategory(modal.category.id, {
           name: trimmed,
           description: description.trim() || undefined,
-          image: image.trim() || undefined,
+          image: imageFile ? undefined : image.trim() || undefined,
+          imageFile,
         });
         await refreshCategories();
         toast.success("Category updated.");
@@ -288,11 +295,12 @@ function CategoriesContent() {
             />
             {(modal.type === "category-add" || modal.type === "category-edit") && (
               <>
-                <Input
-                  label="Image URL (optional)"
-                  value={image}
-                  onChange={(e) => setImage(e.target.value)}
-                  placeholder="https://..."
+                <SingleImageUpload
+                  label="Category image (optional)"
+                  url={image}
+                  onUrlChange={setImage}
+                  file={imageFile}
+                  onFileChange={setImageFile}
                 />
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold text-[#1F2937]">

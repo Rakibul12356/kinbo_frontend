@@ -69,14 +69,20 @@ export const authService = {
   },
 
   async updateProfile(formData: FormData): Promise<UserProfile> {
-    const response = await apiClient.put<ApiResponse<UserProfile>>(
-      "/users/profile",
-      formData,
-      {
-        headers: { "Content-Type": "multipart/form-data" },
-      }
-    );
-    return mapUser(response.data.data);
+    // Try customer profile first, then auth profile (admin/shared).
+    try {
+      const response = await apiClient.put<ApiResponse<UserProfile>>(
+        "/users/profile",
+        formData
+      );
+      return mapUser(response.data.data);
+    } catch {
+      const response = await apiClient.put<ApiResponse<UserProfile>>(
+        "/auth/profile",
+        formData
+      );
+      return mapUser(response.data.data);
+    }
   },
 
   async changePassword(payload: ChangePasswordPayload): Promise<string> {

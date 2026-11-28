@@ -21,9 +21,13 @@ export default function CartItemRow({
     <div className="flex gap-4 p-3.5 bg-white rounded-xl border border-[#E5E7EB] hover:border-zinc-300 transition-colors">
       <div className="relative w-20 h-20 bg-zinc-100 rounded-lg overflow-hidden flex-shrink-0">
         <img
-          src={item.product.images[0]}
+          src={item.product.images[0] || "/images/logo.png"}
           alt={item.product.name}
           className="w-full h-full object-cover"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = "/images/logo.png";
+          }}
         />
       </div>
 

@@ -4,10 +4,11 @@ import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ImagePlus, PackagePlus } from "lucide-react";
+import { ArrowLeft, PackagePlus } from "lucide-react";
 import { toast } from "react-toastify";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
+import { MultiImageUpload } from "@/components/ui/MediaUpload";
 import RouteGuard from "@/components/auth/RouteGuard";
 import { useManagedCategories } from "@/hooks/use-categories";
 import { ADMIN_ROUTES } from "@/lib/auth/auth-store";
@@ -25,7 +26,6 @@ interface ProductForm {
   subcategoryId: string;
   brand: string;
   stock: string;
-  imageUrl: string;
   isFeatured: boolean;
 }
 
@@ -42,10 +42,11 @@ function AddProductContent() {
     subcategoryId: "",
     brand: "",
     stock: "10",
-    imageUrl: "",
     isFeatured: false,
   });
-  const [errors, setErrors] = useState<Partial<Record<keyof ProductForm, string>>>({});
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imageUrlList, setImageUrlList] = useState("");
+  const [errors, setErrors] = useState<Partial<Record<keyof ProductForm | "images", string>>>({});
   const [saving, setSaving] = useState(false);
 
   const effectiveCategoryId = form.categoryId || categories[0]?.id || "";
@@ -64,7 +65,7 @@ function AddProductContent() {
     const price = Number(form.price);
     const discountPercent = Number(form.discountPercent || 0);
     const stock = Number(form.stock);
-    const nextErrors: Partial<Record<keyof ProductForm, string>> = {};
+    const nextErrors: Partial<Record<keyof ProductForm | "images", string>> = {};
 
     if (!form.name.trim()) nextErrors.name = "Product name is required.";
     if (!form.description.trim()) nextErrors.description = "Add a short description.";
@@ -74,7 +75,9 @@ function AddProductContent() {
     }
     if (!effectiveCategoryId) nextErrors.categoryId = "Choose a category.";
     if (!Number.isInteger(stock) || stock < 0) nextErrors.stock = "Stock must be a whole number.";
-    if (!form.imageUrl.trim()) nextErrors.imageUrl = "Image URL is required.";
+    if (imageFiles.length === 0 && !imageUrlList.trim()) {
+      nextErrors.images = "Upload at least one image or paste image URLs.";
+    }
 
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
@@ -92,7 +95,8 @@ function AddProductContent() {
         subcategoryId: form.subcategoryId || undefined,
         brand: form.brand.trim() || undefined,
         isFeatured: form.isFeatured,
-        images: [{ url: form.imageUrl.trim(), isPrimary: true }],
+        imageFiles,
+        imageUrls: imageUrlList.trim() ? imageUrlList.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean) : undefined,
       });
       await queryClient.invalidateQueries({ queryKey: ["products"] });
       toast.success(`${product.name} is live on the store.`);
@@ -241,13 +245,12 @@ function AddProductContent() {
             />
           </div>
 
-          <Input
-            label="Primary Image URL"
-            value={form.imageUrl}
-            onChange={(event) => setField("imageUrl", event.target.value)}
-            placeholder="https://... or /uploads/products/..."
-            leftIcon={<ImagePlus className="h-4 w-4" />}
-            error={errors.imageUrl}
+          <MultiImageUpload
+            files={imageFiles}
+            onFilesChange={setImageFiles}
+            urlList={imageUrlList}
+            onUrlListChange={setImageUrlList}
+            error={errors.images}
           />
 
           <label className="flex cursor-pointer items-center gap-2 text-sm text-[#1F2937]">

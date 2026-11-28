@@ -10,7 +10,9 @@ interface RawCartProduct {
   finalPrice?: number;
   stock: number;
   isOutOfStock?: boolean;
-  image?: string;
+  image?: string | { url?: string } | null;
+  images?: Array<string | { url?: string; isPrimary?: boolean }>;
+  thumbnail?: string;
 }
 
 interface RawCartItem {
@@ -28,10 +30,29 @@ interface RawCartResponse {
   items: RawCartItem[];
 }
 
+function pickCartProductImage(product: RawCartProduct): string {
+  // Prefer images[] (matches product catalog); single `image` is often stale/missing.
+  const list = Array.isArray(product.images) ? product.images : [];
+  if (list.length > 0) {
+    const primary =
+      list.find(
+        (img) => typeof img === "object" && img && "isPrimary" in img && img.isPrimary
+      ) ?? list[0];
+    const fromList = resolveAssetUrl(primary);
+    if (fromList) return fromList;
+  }
+
+  const fromField = resolveAssetUrl(product.image);
+  if (fromField) return fromField;
+
+  return resolveAssetUrl(product.thumbnail);
+}
+
 function mapCartItem(raw: RawCartItem): CartItem {
   const basePrice = Number(raw.product.price ?? 0);
   const finalPrice = Number(raw.product.finalPrice ?? basePrice);
   const discountPercent = Number(raw.product.discountPercent ?? 0);
+  const imageUrl = pickCartProductImage(raw.product);
 
   return {
     itemId: raw.id,
@@ -47,7 +68,7 @@ function mapCartItem(raw: RawCartItem): CartItem {
       category: "",
       rating: 0,
       reviewCount: 0,
-      images: raw.product.image ? [resolveAssetUrl(raw.product.image)] : [],
+      images: imageUrl ? [imageUrl] : [],
       stock: raw.product.isOutOfStock ? 0 : Number(raw.product.stock ?? 0),
     },
   };

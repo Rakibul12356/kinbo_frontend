@@ -8,6 +8,7 @@ import PageLayout from "@/components/layout/PageLayout";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
+import { ResumeUpload } from "@/components/ui/MediaUpload";
 import { useJobs } from "@/hooks/use-careers";
 import { extractApiError } from "@/lib/axios";
 import { careersService } from "@/services/careers.service";
@@ -83,21 +84,30 @@ export default function CareersPage() {
     resumeUrl: "",
     coverLetter: "",
   });
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [resumeError, setResumeError] = useState<string | undefined>();
 
   const handleApply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!applyingJob) return;
+    if (!resumeFile && !form.resumeUrl.trim()) {
+      setResumeError("Upload a resume file or paste a resume URL.");
+      return;
+    }
+    setResumeError(undefined);
     setSubmitting(true);
     try {
       const msg = await careersService.applyJob(applyingJob.id, {
         fullName: form.fullName.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
-        resumeUrl: form.resumeUrl.trim(),
+        resumeFile,
+        resumeUrl: resumeFile ? undefined : form.resumeUrl.trim(),
         coverLetter: form.coverLetter.trim(),
       });
       toast.success(msg);
       setApplyingJob(null);
+      setResumeFile(null);
       setForm({ fullName: "", email: "", phone: "", resumeUrl: "", coverLetter: "" });
     } catch (error) {
       toast.error(extractApiError(error, "Could not submit application."));
@@ -187,13 +197,18 @@ export default function CareersPage() {
                 onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
               />
             </div>
-            <Input
-              label="Resume URL"
-              type="url"
-              required
-              placeholder="https://drive.google.com/..."
-              value={form.resumeUrl}
-              onChange={(e) => setForm((f) => ({ ...f, resumeUrl: e.target.value }))}
+            <ResumeUpload
+              file={resumeFile}
+              onFileChange={(file: File | null) => {
+                setResumeFile(file);
+                setResumeError(undefined);
+              }}
+              url={form.resumeUrl}
+              onUrlChange={(resumeUrl: string) => {
+                setForm((f) => ({ ...f, resumeUrl }));
+                setResumeError(undefined);
+              }}
+              error={resumeError}
             />
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-[#1F2937]">

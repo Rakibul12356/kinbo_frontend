@@ -83,9 +83,13 @@ export default function CartDrawer() {
                 >
                   <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 flex-shrink-0">
                     <img
-                      src={item.product.images[0]}
+                      src={item.product.images[0] || "/images/logo.png"}
                       alt={item.product.name}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = "/images/logo.png";
+                      }}
                     />
                   </div>
 
